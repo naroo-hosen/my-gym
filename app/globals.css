@@ -259,9 +259,23 @@ button {
   border: 1px solid #e5e7eb;
   background: #f9fafb;
   margin-top: 0;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: height 0.3s ease, opacity 0.3s ease, transform 0.3s ease,
+    padding 0.3s ease;
+}
+
+.detail-panel.is-open {
   height: 50vh;
   min-height: 320px;
+  padding: 24px;
   overflow: auto;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .detail-grid {

@@ -102,7 +102,11 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     className={
                       selectedMemberId === member.id ? "row active" : "row"
                     }
-                    onClick={() => setSelectedMemberId(member.id)}
+                    onClick={() =>
+                      setSelectedMemberId((prev) =>
+                        prev === member.id ? null : member.id,
+                      )
+                    }
                   >
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
@@ -117,32 +121,36 @@ const MemberPage = ({ members }: MemberPageProps) => {
         )}
       </section>
 
-      {selectedMember && (
-        <section className="panel detail-panel">
-          <div className="panel-header">
-            <h2>회원 상세</h2>
-            <button className="button-secondary" type="button">
-              수정
-            </button>
-          </div>
-          <div className="detail-grid">
-            <div>
-              <span className="detail-label">이름</span>
-              <strong>{selectedMember.name}</strong>
+      <section
+        className={`panel detail-panel${selectedMember ? " is-open" : ""}`}
+      >
+        {selectedMember && (
+          <>
+            <div className="panel-header">
+              <h2>회원 상세</h2>
+              <button className="button-secondary" type="button">
+                수정
+              </button>
             </div>
-            <div>
-              <span className="detail-label">전화번호</span>
-              <strong>{selectedMember.phone}</strong>
+            <div className="detail-grid">
+              <div>
+                <span className="detail-label">이름</span>
+                <strong>{selectedMember.name}</strong>
+              </div>
+              <div>
+                <span className="detail-label">전화번호</span>
+                <strong>{selectedMember.phone}</strong>
+              </div>
+              <div>
+                <span className="detail-label">등록일</span>
+                <strong>
+                  {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
+                </strong>
+              </div>
             </div>
-            <div>
-              <span className="detail-label">등록일</span>
-              <strong>
-                {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
-              </strong>
-            </div>
-          </div>
-        </section>
-      )}
+          </>
+        )}
+      </section>
     </div>
   );
 };

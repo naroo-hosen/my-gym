@@ -15,15 +15,27 @@ type MemberPageProps = {
   members: Member[];
 };
 
+const PAGE_SIZE = 8;
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
+  const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const pagedMembers = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return members.slice(start, start + PAGE_SIZE);
+  }, [members, page]);
+  const handlePageChange = (nextPage: number) => {
+    const safePage = Math.min(Math.max(nextPage, 1), totalPages);
+    setPage(safePage);
+  };
 
   return (
     <div className="content">
@@ -82,7 +94,30 @@ const MemberPage = ({ members }: MemberPageProps) => {
       )}
 
       <section className="panel list-panel">
-        <h2>회원 목록</h2>
+        <div className="panel-header">
+          <h2>회원 목록</h2>
+          <div className="pagination">
+            <button
+              className="button-ghost"
+              type="button"
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+            >
+              이전
+            </button>
+            <span className="pagination-status">
+              {page} / {totalPages}
+            </span>
+            <button
+              className="button-ghost"
+              type="button"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+            >
+              다음
+            </button>
+          </div>
+        </div>
         {members.length === 0 ? (
           <p className="empty">아직 등록된 회원이 없어요.</p>
         ) : (
@@ -96,7 +131,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 </tr>
               </thead>
               <tbody>
-                {members.map((member) => (
+                {pagedMembers.map((member) => (
                   <tr
                     key={member.id}
                     className={

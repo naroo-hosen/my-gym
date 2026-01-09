@@ -196,6 +196,22 @@ section {
   margin-bottom: 16px;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-status {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.button-ghost:disabled {
+  color: #cbd5f5;
+  cursor: not-allowed;
+}
+
 label {
   display: block;
   font-weight: 600;

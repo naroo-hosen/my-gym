@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createMember, deleteMember } from "@/app/actions";
+import { createMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -17,8 +17,13 @@ type MemberPageProps = {
 
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
+  const selectedMember = useMemo(
+    () => members.find((member) => member.id === selectedMemberId) ?? null,
+    [members, selectedMemberId],
+  );
 
   return (
     <div className="content">
@@ -40,38 +45,40 @@ const MemberPage = ({ members }: MemberPageProps) => {
       </header>
 
       {isCreateOpen && (
-        <section className="panel">
-          <div className="panel-header">
-            <h2>신규 회원 등록</h2>
-            <button
-              className="button-ghost"
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-            >
-              닫기
-            </button>
-          </div>
-          <form action={createMember}>
-            <div className="grid">
-              <div>
-                <label htmlFor="name">이름</label>
-                <input id="name" name="name" placeholder="홍길동" required />
-              </div>
-              <div>
-                <label htmlFor="phone">전화번호</label>
-                <PhoneInput
-                  id="phone"
-                  name="phone"
-                  placeholder="010-1234-5678"
-                  required
-                />
-              </div>
+        <div className="modal-overlay" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true">
+            <div className="panel-header">
+              <h2>신규 회원 등록</h2>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setIsCreateOpen(false)}
+              >
+                닫기
+              </button>
             </div>
-            <button className="button-primary" type="submit">
-              등록하기
-            </button>
-          </form>
-        </section>
+            <form action={createMember}>
+              <div className="grid">
+                <div>
+                  <label htmlFor="name">이름</label>
+                  <input id="name" name="name" placeholder="홍길동" required />
+                </div>
+                <div>
+                  <label htmlFor="phone">전화번호</label>
+                  <PhoneInput
+                    id="phone"
+                    name="phone"
+                    placeholder="010-1234-5678"
+                    required
+                  />
+                </div>
+              </div>
+              <button className="button-primary" type="submit">
+                등록하기
+              </button>
+            </form>
+          </div>
+        </div>
       )}
 
       <section className="panel list-panel">
@@ -86,24 +93,21 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th>이름</th>
                   <th>전화번호</th>
                   <th>등록일</th>
-                  <th>관리</th>
                 </tr>
               </thead>
               <tbody>
                 {members.map((member) => (
-                  <tr key={member.id}>
+                  <tr
+                    key={member.id}
+                    className={
+                      selectedMemberId === member.id ? "row active" : "row"
+                    }
+                    onClick={() => setSelectedMemberId(member.id)}
+                  >
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
                     <td>
                       {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                    </td>
-                    <td>
-                      <form action={deleteMember}>
-                        <input type="hidden" name="id" value={member.id} />
-                        <button className="button-danger" type="submit">
-                          삭제
-                        </button>
-                      </form>
                     </td>
                   </tr>
                 ))}
@@ -112,6 +116,33 @@ const MemberPage = ({ members }: MemberPageProps) => {
           </div>
         )}
       </section>
+
+      {selectedMember && (
+        <section className="panel detail-panel">
+          <div className="panel-header">
+            <h2>회원 상세</h2>
+            <button className="button-secondary" type="button">
+              수정
+            </button>
+          </div>
+          <div className="detail-grid">
+            <div>
+              <span className="detail-label">이름</span>
+              <strong>{selectedMember.name}</strong>
+            </div>
+            <div>
+              <span className="detail-label">전화번호</span>
+              <strong>{selectedMember.phone}</strong>
+            </div>
+            <div>
+              <span className="detail-label">등록일</span>
+              <strong>
+                {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
+              </strong>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

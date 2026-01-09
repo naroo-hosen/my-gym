@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createMember, deleteMember, updateMember } from "@/app/actions";
+import { createMember, deleteMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -74,62 +74,41 @@ const MemberPage = ({ members }: MemberPageProps) => {
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel list-panel">
         <h2>회원 목록</h2>
         {members.length === 0 ? (
           <p className="empty">아직 등록된 회원이 없어요.</p>
         ) : (
-          <div className="cards">
-            {members.map((member) => (
-              <div className="card" key={member.id}>
-                <div className="card-header">
-                  <div>
-                    <strong>{member.name}</strong>
-                    <div className="meta">{member.phone}</div>
-                  </div>
-                  <span className="meta">
-                    등록일{" "}
-                    {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                  </span>
-                </div>
-                <form action={updateMember}>
-                  <input type="hidden" name="id" value={member.id} />
-                  <div className="grid">
-                    <div>
-                      <label htmlFor={`name-${member.id}`}>이름</label>
-                      <input
-                        id={`name-${member.id}`}
-                        name="name"
-                        defaultValue={member.name}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor={`phone-${member.id}`}>전화번호</label>
-                      <PhoneInput
-                        id={`phone-${member.id}`}
-                        name="phone"
-                        defaultValue={member.phone}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="actions">
-                    <button className="button-secondary" type="submit">
-                      수정 저장
-                    </button>
-                  </div>
-                </form>
-                <form action={deleteMember}>
-                  <input type="hidden" name="id" value={member.id} />
-                  <div className="actions">
-                    <button className="button-danger" type="submit">
-                      삭제
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ))}
+          <div className="table-wrap">
+            <table className="member-table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>전화번호</th>
+                  <th>등록일</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr key={member.id}>
+                    <td>{member.name}</td>
+                    <td>{member.phone}</td>
+                    <td>
+                      {new Date(member.createdAt).toLocaleDateString("ko-KR")}
+                    </td>
+                    <td>
+                      <form action={deleteMember}>
+                        <input type="hidden" name="id" value={member.id} />
+                        <button className="button-danger" type="submit">
+                          삭제
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

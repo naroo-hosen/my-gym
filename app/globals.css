@@ -258,6 +258,7 @@ button {
 .detail-panel {
   border: 1px solid #e5e7eb;
   background: #f9fafb;
+  margin-top: -8px;
 }
 
 .detail-grid {

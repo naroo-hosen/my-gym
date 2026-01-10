@@ -220,19 +220,19 @@ const MemberPage = ({ members }: MemberPageProps) => {
               </div>
             </div>
             <div className="detail-grid">
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">회원 번호</span>
                 <strong>{selectedMemberNumber ?? "-"}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">이름</span>
                 <strong>{selectedMember.name}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">전화번호</span>
                 <strong>{selectedMember.phone}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">생년월일</span>
                 <strong>
                   {selectedMember.birthDate
@@ -240,24 +240,24 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     : "-"}
                 </strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">성별</span>
                 <strong>{selectedMember.gender || "-"}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">부모님 연락처</span>
                 <strong>{selectedMember.parentPhone || "-"}</strong>
               </div>
-              <div>
-                <span className="detail-label">메모</span>
-                <strong>{selectedMember.memo || "-"}</strong>
-              </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">등록일</span>
                 <strong>
                   {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
                 </strong>
               </div>
+            </div>
+            <div className="detail-memo">
+              <span className="detail-label">메모</span>
+              <p>{selectedMember.memo || "-"}</p>
             </div>
           </>
         )}

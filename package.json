@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && next dev",
-    "build": "prisma generate && next build",
-    "start": "prisma generate && next start",
+    "dev": "prisma generate --schema ./prisma/schema.prisma && next dev",
+    "build": "prisma generate --schema ./prisma/schema.prisma && next build",
+    "start": "prisma generate --schema ./prisma/schema.prisma && next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma",
     "prisma": "prisma"
   },
   "dependencies": {

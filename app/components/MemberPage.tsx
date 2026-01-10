@@ -207,20 +207,10 @@ const MemberPage = ({ members }: MemberPageProps) => {
       {pendingDeleteId !== null && (
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
-            <div className="panel-header">
-              <h2>삭제 확인</h2>
-              <button
-                className="button-ghost"
-                type="button"
-                onClick={() => setPendingDeleteId(null)}
-              >
-                닫기
-              </button>
-            </div>
             <p className="confirm-message">
               선택한 회원을 삭제할까요? 삭제 후에는 복구할 수 없습니다.
             </p>
-            <div className="panel-actions">
+            <div className="panel-actions center">
               <button
                 className="button-secondary"
                 type="button"

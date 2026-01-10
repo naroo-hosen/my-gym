@@ -207,6 +207,10 @@ section {
   gap: 8px;
 }
 
+.panel-actions.center {
+  justify-content: center;
+}
+
 .confirm-modal {
   max-width: 460px;
 }

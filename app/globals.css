@@ -104,6 +104,18 @@ p {
   cursor: pointer;
 }
 
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.menu-toggle-icon {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
 .menu-item.active {
   background: rgba(249, 115, 22, 0.2);
   color: #f97316;

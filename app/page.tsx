@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import MemberPage from "@/app/components/MemberPage";
+import Sidebar from "@/app/components/Sidebar";
 
 const HomePage = async () => {
   const members = await prisma.member.findMany({
@@ -21,27 +22,7 @@ const HomePage = async () => {
 
   return (
     <main className="page">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-badge">GYM</span>
-          <div>
-            <p className="brand-title">챔피언스 복싱 짐</p>
-            <p className="brand-subtitle">관리자 모드</p>
-          </div>
-        </div>
-        <nav className="menu">
-          <div className="menu-group">
-            <button className="menu-item" type="button">
-              회원 관리
-            </button>
-            <div className="menu-sub">
-              <button className="menu-item sub active" type="button">
-                회원
-              </button>
-            </div>
-          </div>
-        </nav>
-      </aside>
+      <Sidebar />
 
       <MemberPage members={serializedMembers} />
     </main>

@@ -61,7 +61,6 @@ const MemberPage = ({ members }: MemberPageProps) => {
       <header className="page-header">
         <div>
           <h1>회원 관리</h1>
-          <p>복싱 체육관 회원 정보를 간단하게 관리합니다.</p>
         </div>
         <div className="header-actions">
           <span className="count">{countLabel}</span>

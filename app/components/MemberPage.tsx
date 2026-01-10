@@ -162,7 +162,6 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th>성별</th>
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
-                  <th>메모</th>
                   <th>등록일</th>
                 </tr>
               </thead>
@@ -189,7 +188,6 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     <td>{member.gender || "-"}</td>
                     <td>{member.parentPhone || "-"}</td>
                     <td>{member.phone}</td>
-                    <td>{member.memo || "-"}</td>
                     <td>
                       {new Date(member.createdAt).toLocaleDateString("ko-KR")}
                     </td>

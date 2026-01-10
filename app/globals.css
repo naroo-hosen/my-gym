@@ -81,6 +81,17 @@ p {
   gap: 8px;
 }
 
+.menu-group {
+  display: grid;
+  gap: 6px;
+}
+
+.menu-sub {
+  display: grid;
+  gap: 6px;
+  padding-left: 12px;
+}
+
 .menu-item {
   border: none;
   background: transparent;
@@ -96,6 +107,11 @@ p {
 .menu-item.active {
   background: rgba(249, 115, 22, 0.2);
   color: #f97316;
+}
+
+.menu-item.sub {
+  font-size: 13px;
+  padding: 8px 12px;
 }
 
 .content {

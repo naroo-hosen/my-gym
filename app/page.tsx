@@ -30,9 +30,16 @@ const HomePage = async () => {
           </div>
         </div>
         <nav className="menu">
-          <button className="menu-item active" type="button">
-            회원 관리
-          </button>
+          <div className="menu-group">
+            <button className="menu-item" type="button">
+              회원 관리
+            </button>
+            <div className="menu-sub">
+              <button className="menu-item sub active" type="button">
+                회원
+              </button>
+            </div>
+          </div>
         </nav>
       </aside>
 

@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "prisma generate --schema ./prisma/schema.prisma && next dev",
+    "build": "prisma generate --schema ./prisma/schema.prisma && next build",
+    "start": "prisma generate --schema ./prisma/schema.prisma && next start",
     "lint": "next lint",
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma",
     "prisma": "prisma"
   },
   "dependencies": {
@@ -17,7 +18,12 @@
     "sqlite3": "5.1.7"
   },
   "devDependencies": {
+    "@types/node": "25.0.5",
+    "@types/react": "19.2.7",
     "prisma": "5.18.0",
     "typescript": "5.5.4"
+  },
+  "prisma": {
+    "schema": "./prisma/schema.prisma"
   }
 }

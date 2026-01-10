@@ -170,7 +170,14 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <button className="button-secondary" type="button">
                   수정
                 </button>
-                <form action={deleteMember}>
+                <form
+                  action={deleteMember}
+                  onSubmit={(event) => {
+                    if (!window.confirm("정말로 삭제할까요?")) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
                   <input type="hidden" name="id" value={selectedMember.id} />
                   <button className="button-danger" type="submit">
                     삭제

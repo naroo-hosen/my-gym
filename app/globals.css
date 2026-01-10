@@ -202,6 +202,11 @@ section {
   margin-bottom: 16px;
 }
 
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .pagination {
   display: flex;
   align-items: center;

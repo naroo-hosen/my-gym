@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createMember } from "@/app/actions";
+import { createMember, deleteMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -166,9 +166,17 @@ const MemberPage = ({ members }: MemberPageProps) => {
           <>
             <div className="panel-header">
               <h2>회원 상세</h2>
-              <button className="button-secondary" type="button">
-                수정
-              </button>
+              <div className="panel-actions">
+                <button className="button-secondary" type="button">
+                  수정
+                </button>
+                <form action={deleteMember}>
+                  <input type="hidden" name="id" value={selectedMember.id} />
+                  <button className="button-danger" type="submit">
+                    삭제
+                  </button>
+                </form>
+              </div>
             </div>
             <div className="detail-grid">
               <div>

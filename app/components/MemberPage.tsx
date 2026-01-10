@@ -21,6 +21,19 @@ type MemberPageProps = {
 
 const PAGE_SIZE = 8;
 
+const getAge = (birthDate: string | null) => {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age;
+};
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
@@ -159,6 +172,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th className="number">회원번호</th>
                   <th>이름</th>
                   <th>생년월일</th>
+                  <th>나이</th>
                   <th>성별</th>
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
@@ -185,6 +199,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                         ? new Date(member.birthDate).toLocaleDateString("ko-KR")
                         : "-"}
                     </td>
+                    <td>{getAge(member.birthDate) ?? "-"}</td>
                     <td>{member.gender || "-"}</td>
                     <td>{member.parentPhone || "-"}</td>
                     <td>{member.phone}</td>
@@ -239,6 +254,10 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     ? new Date(selectedMember.birthDate).toLocaleDateString("ko-KR")
                     : "-"}
                 </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">나이</span>
+                <strong>{getAge(selectedMember.birthDate) ?? "-"}</strong>
               </div>
               <div className="detail-item">
                 <span className="detail-label">성별</span>

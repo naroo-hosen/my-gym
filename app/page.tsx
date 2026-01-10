@@ -33,15 +33,6 @@ const HomePage = async () => {
           <button className="menu-item active" type="button">
             회원 관리
           </button>
-          <button className="menu-item" type="button">
-            수업 일정
-          </button>
-          <button className="menu-item" type="button">
-            결제 관리
-          </button>
-          <button className="menu-item" type="button">
-            시설 관리
-          </button>
         </nav>
       </aside>
 

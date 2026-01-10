@@ -27,6 +27,13 @@ const MemberPage = ({ members }: MemberPageProps) => {
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
+  const selectedMemberNumber = useMemo(() => {
+    if (!selectedMember) {
+      return null;
+    }
+    const index = members.findIndex((member) => member.id === selectedMember.id);
+    return index === -1 ? null : index + 1;
+  }, [members, selectedMember]);
   const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -125,13 +132,14 @@ const MemberPage = ({ members }: MemberPageProps) => {
             <table className="member-table">
               <thead>
                 <tr>
+                  <th className="number">번호</th>
                   <th>이름</th>
                   <th>전화번호</th>
                   <th>등록일</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedMembers.map((member) => (
+                {pagedMembers.map((member, index) => (
                   <tr
                     key={member.id}
                     className={
@@ -143,6 +151,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                       )
                     }
                   >
+                    <td className="number">{(page - 1) * PAGE_SIZE + index + 1}</td>
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
                     <td>
@@ -168,6 +177,10 @@ const MemberPage = ({ members }: MemberPageProps) => {
               </button>
             </div>
             <div className="detail-grid">
+              <div>
+                <span className="detail-label">회원 번호</span>
+                <strong>{selectedMemberNumber ?? "-"}</strong>
+              </div>
               <div>
                 <span className="detail-label">이름</span>
                 <strong>{selectedMember.name}</strong>

@@ -164,6 +164,12 @@ section {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.member-table th.number,
+.member-table td.number {
+  width: 72px;
+  color: #6b7280;
+}
+
 .member-table tbody .row {
   cursor: pointer;
 }

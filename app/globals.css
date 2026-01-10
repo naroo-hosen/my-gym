@@ -207,6 +207,16 @@ section {
   gap: 8px;
 }
 
+.confirm-modal {
+  max-width: 460px;
+}
+
+.confirm-message {
+  margin: 0 0 20px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
 .pagination {
   display: flex;
   align-items: center;

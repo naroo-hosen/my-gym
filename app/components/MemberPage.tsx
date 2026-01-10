@@ -21,6 +21,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
   const selectedMember = useMemo(
@@ -170,19 +171,13 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <button className="button-secondary" type="button">
                   수정
                 </button>
-                <form
-                  action={deleteMember}
-                  onSubmit={(event) => {
-                    if (!window.confirm("정말로 삭제할까요?")) {
-                      event.preventDefault();
-                    }
-                  }}
+                <button
+                  className="button-danger"
+                  type="button"
+                  onClick={() => setPendingDeleteId(selectedMember.id)}
                 >
-                  <input type="hidden" name="id" value={selectedMember.id} />
-                  <button className="button-danger" type="submit">
-                    삭제
-                  </button>
-                </form>
+                  삭제
+                </button>
               </div>
             </div>
             <div className="detail-grid">
@@ -208,6 +203,41 @@ const MemberPage = ({ members }: MemberPageProps) => {
           </>
         )}
       </section>
+
+      {pendingDeleteId !== null && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <div className="panel-header">
+              <h2>삭제 확인</h2>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setPendingDeleteId(null)}
+              >
+                닫기
+              </button>
+            </div>
+            <p className="confirm-message">
+              선택한 회원을 삭제할까요? 삭제 후에는 복구할 수 없습니다.
+            </p>
+            <div className="panel-actions">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingDeleteId(null)}
+              >
+                취소
+              </button>
+              <form action={deleteMember}>
+                <input type="hidden" name="id" value={pendingDeleteId} />
+                <button className="button-danger" type="submit">
+                  삭제하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

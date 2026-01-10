@@ -21,6 +21,19 @@ type MemberPageProps = {
 
 const PAGE_SIZE = 8;
 
+const getAge = (birthDate: string | null) => {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age;
+};
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
@@ -48,7 +61,6 @@ const MemberPage = ({ members }: MemberPageProps) => {
       <header className="page-header">
         <div>
           <h1>회원 관리</h1>
-          <p>복싱 체육관 회원 정보를 간단하게 관리합니다.</p>
         </div>
         <div className="header-actions">
           <span className="count">{countLabel}</span>
@@ -159,10 +171,10 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th className="number">회원번호</th>
                   <th>이름</th>
                   <th>생년월일</th>
+                  <th>나이</th>
                   <th>성별</th>
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
-                  <th>메모</th>
                   <th>등록일</th>
                 </tr>
               </thead>
@@ -186,10 +198,10 @@ const MemberPage = ({ members }: MemberPageProps) => {
                         ? new Date(member.birthDate).toLocaleDateString("ko-KR")
                         : "-"}
                     </td>
+                    <td>{getAge(member.birthDate) ?? "-"}</td>
                     <td>{member.gender || "-"}</td>
                     <td>{member.parentPhone || "-"}</td>
                     <td>{member.phone}</td>
-                    <td>{member.memo || "-"}</td>
                     <td>
                       {new Date(member.createdAt).toLocaleDateString("ko-KR")}
                     </td>
@@ -222,19 +234,19 @@ const MemberPage = ({ members }: MemberPageProps) => {
               </div>
             </div>
             <div className="detail-grid">
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">회원 번호</span>
                 <strong>{selectedMemberNumber ?? "-"}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">이름</span>
                 <strong>{selectedMember.name}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">전화번호</span>
                 <strong>{selectedMember.phone}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">생년월일</span>
                 <strong>
                   {selectedMember.birthDate
@@ -242,24 +254,28 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     : "-"}
                 </strong>
               </div>
-              <div>
+              <div className="detail-item">
+                <span className="detail-label">나이</span>
+                <strong>{getAge(selectedMember.birthDate) ?? "-"}</strong>
+              </div>
+              <div className="detail-item">
                 <span className="detail-label">성별</span>
                 <strong>{selectedMember.gender || "-"}</strong>
               </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">부모님 연락처</span>
                 <strong>{selectedMember.parentPhone || "-"}</strong>
               </div>
-              <div>
-                <span className="detail-label">메모</span>
-                <strong>{selectedMember.memo || "-"}</strong>
-              </div>
-              <div>
+              <div className="detail-item">
                 <span className="detail-label">등록일</span>
                 <strong>
                   {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
                 </strong>
               </div>
+            </div>
+            <div className="detail-memo">
+              <span className="detail-label">메모</span>
+              <p>{selectedMember.memo || "-"}</p>
             </div>
           </>
         )}

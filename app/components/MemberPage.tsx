@@ -69,7 +69,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 닫기
               </button>
             </div>
-            <form action={createMember}>
+            <form action={createMember} onSubmit={() => setIsCreateOpen(false)}>
               <div className="grid">
                 <div>
                   <label htmlFor="name">이름</label>

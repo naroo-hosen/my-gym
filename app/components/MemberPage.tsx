@@ -5,7 +5,7 @@ import { createMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
-  id: string;
+  id: number;
   name: string;
   phone: string;
   createdAt: string;
@@ -19,7 +19,7 @@ const PAGE_SIZE = 8;
 
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
@@ -27,13 +27,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
-  const selectedMemberNumber = useMemo(() => {
-    if (!selectedMember) {
-      return null;
-    }
-    const index = members.findIndex((member) => member.id === selectedMember.id);
-    return index === -1 ? null : index + 1;
-  }, [members, selectedMember]);
+  const selectedMemberNumber = selectedMember?.id ?? null;
   const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -132,14 +126,14 @@ const MemberPage = ({ members }: MemberPageProps) => {
             <table className="member-table">
               <thead>
                 <tr>
-                  <th className="number">번호</th>
+                  <th className="number">회원번호</th>
                   <th>이름</th>
                   <th>전화번호</th>
                   <th>등록일</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedMembers.map((member, index) => (
+                {pagedMembers.map((member) => (
                   <tr
                     key={member.id}
                     className={
@@ -151,7 +145,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                       )
                     }
                   >
-                    <td className="number">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                    <td className="number">{member.id}</td>
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
                     <td>

@@ -8,6 +8,10 @@ type Member = {
   id: number;
   name: string;
   phone: string;
+  birthDate: string | null;
+  gender: string | null;
+  parentPhone: string | null;
+  memo: string | null;
   createdAt: string;
 };
 
@@ -86,6 +90,31 @@ const MemberPage = ({ members }: MemberPageProps) => {
                     required
                   />
                 </div>
+                <div>
+                  <label htmlFor="birthDate">생년월일</label>
+                  <input id="birthDate" name="birthDate" type="date" />
+                </div>
+                <div>
+                  <label htmlFor="gender">성별</label>
+                  <select id="gender" name="gender" defaultValue="">
+                    <option value="">선택</option>
+                    <option value="남성">남성</option>
+                    <option value="여성">여성</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="parentPhone">부모님 연락처</label>
+                  <PhoneInput
+                    id="parentPhone"
+                    name="parentPhone"
+                    placeholder="010-1234-5678"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="memo">메모</label>
+                  <textarea id="memo" name="memo" rows={3} />
+                </div>
               </div>
               <button className="button-primary" type="submit">
                 등록하기
@@ -129,7 +158,11 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <tr>
                   <th className="number">회원번호</th>
                   <th>이름</th>
+                  <th>생년월일</th>
+                  <th>성별</th>
+                  <th>부모님 연락처</th>
                   <th>전화번호</th>
+                  <th>메모</th>
                   <th>등록일</th>
                 </tr>
               </thead>
@@ -148,7 +181,15 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   >
                     <td className="number">{member.id}</td>
                     <td>{member.name}</td>
+                    <td>
+                      {member.birthDate
+                        ? new Date(member.birthDate).toLocaleDateString("ko-KR")
+                        : "-"}
+                    </td>
+                    <td>{member.gender || "-"}</td>
+                    <td>{member.parentPhone || "-"}</td>
                     <td>{member.phone}</td>
+                    <td>{member.memo || "-"}</td>
                     <td>
                       {new Date(member.createdAt).toLocaleDateString("ko-KR")}
                     </td>
@@ -192,6 +233,26 @@ const MemberPage = ({ members }: MemberPageProps) => {
               <div>
                 <span className="detail-label">전화번호</span>
                 <strong>{selectedMember.phone}</strong>
+              </div>
+              <div>
+                <span className="detail-label">생년월일</span>
+                <strong>
+                  {selectedMember.birthDate
+                    ? new Date(selectedMember.birthDate).toLocaleDateString("ko-KR")
+                    : "-"}
+                </strong>
+              </div>
+              <div>
+                <span className="detail-label">성별</span>
+                <strong>{selectedMember.gender || "-"}</strong>
+              </div>
+              <div>
+                <span className="detail-label">부모님 연락처</span>
+                <strong>{selectedMember.parentPhone || "-"}</strong>
+              </div>
+              <div>
+                <span className="detail-label">메모</span>
+                <strong>{selectedMember.memo || "-"}</strong>
               </div>
               <div>
                 <span className="detail-label">등록일</span>

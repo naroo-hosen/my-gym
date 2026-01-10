@@ -12,6 +12,10 @@ const HomePage = async () => {
     id: member.id,
     name: member.name,
     phone: member.phone,
+    birthDate: member.birthDate ? member.birthDate.toISOString() : null,
+    gender: member.gender,
+    parentPhone: member.parentPhone,
+    memo: member.memo,
     createdAt: member.createdAt.toISOString(),
   }));
 

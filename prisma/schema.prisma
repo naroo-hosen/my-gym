@@ -8,8 +8,12 @@ datasource db {
 }
 
 model Member {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String
+  birthDate   DateTime?
+  gender      String?
+  parentPhone String?
+  memo        String?
+  createdAt   DateTime @default(now())
 }

@@ -252,7 +252,24 @@ input {
   font-size: 14px;
 }
 
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
 input:focus {
+  outline: 2px solid #6366f1;
+  border-color: #6366f1;
+}
+
+select:focus,
+textarea:focus {
   outline: 2px solid #6366f1;
   border-color: #6366f1;
 }

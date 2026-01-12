@@ -23,6 +23,7 @@ type Member = {
   status: string;
   membershipId: number | null;
   membershipAssignedAt: string | null;
+  membershipExpiresAt: string | null;
   membershipDuration: number | null;
   membershipPausedAt: string | null;
   membershipTotalPausedMs: number;
@@ -89,12 +90,15 @@ const formatDateInput = (birthDate: string | null) => {
   return date.toISOString().split("T")[0];
 };
 
-const getRemainingDays = (
+const resolveExpiryDate = (
+  expiresAt: string | null,
   assignedAt: string | null,
   durationMonths: number | null,
-  totalPausedMs: number,
-  pausedAt: string | null,
 ) => {
+  if (expiresAt) {
+    const parsed = new Date(expiresAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
   if (!assignedAt || !durationMonths) {
     return null;
   }
@@ -102,9 +106,28 @@ const getRemainingDays = (
   if (Number.isNaN(startDate.getTime())) {
     return null;
   }
-  const expiryDate = new Date(startDate);
-  expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
-  expiryDate.setTime(expiryDate.getTime() + totalPausedMs);
+  const derivedExpiry = new Date(startDate);
+  derivedExpiry.setMonth(derivedExpiry.getMonth() + durationMonths);
+  return derivedExpiry;
+};
+
+const getRemainingDays = (
+  expiresAt: string | null,
+  assignedAt: string | null,
+  durationMonths: number | null,
+  totalPausedMs: number,
+  pausedAt: string | null,
+) => {
+  const baseExpiryDate = resolveExpiryDate(
+    expiresAt,
+    assignedAt,
+    durationMonths,
+  );
+  if (!baseExpiryDate) {
+    return null;
+  }
+  const expiryDate = new Date(baseExpiryDate);
+  expiryDate.setTime(baseExpiryDate.getTime() + totalPausedMs);
   const effectiveNow = pausedAt ? new Date(pausedAt) : new Date();
   if (Number.isNaN(effectiveNow.getTime())) {
     return null;
@@ -200,12 +223,14 @@ const MemberPage = ({
   const selectedMembershipRemainingDays = useMemo(
     () =>
       getRemainingDays(
+        selectedMember?.membershipExpiresAt ?? null,
         selectedMember?.membershipAssignedAt ?? null,
         selectedMember?.membershipDuration ?? null,
         selectedMember?.membershipTotalPausedMs ?? 0,
         selectedMember?.membershipPausedAt ?? null,
       ),
     [
+      selectedMember?.membershipExpiresAt,
       selectedMember?.membershipAssignedAt,
       selectedMember?.membershipDuration,
       selectedMember?.membershipPausedAt,
@@ -665,6 +690,7 @@ const MemberPage = ({
                   <th>전화번호</th>
                   <th>등록일</th>
                   <th>상태</th>
+                  <th>만료일</th>
                   <th>남은 기간</th>
                 </tr>
               </thead>
@@ -674,7 +700,16 @@ const MemberPage = ({
                     member.status,
                     Boolean(member.membershipPausedAt),
                   );
+                  const resolvedExpiryDate = resolveExpiryDate(
+                    member.membershipExpiresAt,
+                    member.membershipAssignedAt,
+                    member.membershipDuration,
+                  );
+                  const expiresAtLabel = resolvedExpiryDate
+                    ? resolvedExpiryDate.toLocaleDateString("ko-KR")
+                    : "-";
                   const remainingDays = getRemainingDays(
+                    member.membershipExpiresAt,
                     member.membershipAssignedAt,
                     member.membershipDuration,
                     member.membershipTotalPausedMs,
@@ -722,6 +757,7 @@ const MemberPage = ({
                           {statusInfo.label}
                         </span>
                       </td>
+                      <td>{expiresAtLabel}</td>
                       <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
                     </tr>
                   );
@@ -1070,6 +1106,16 @@ const MemberPage = ({
                     </button>
                   </div>
                 )}
+              </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">만료일</span>
+                <strong>
+                  {resolveExpiryDate(
+                    selectedMember.membershipExpiresAt,
+                    selectedMember.membershipAssignedAt,
+                    selectedMember.membershipDuration,
+                  )?.toLocaleDateString("ko-KR") ?? "-"}
+                </strong>
               </div>
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">남은 기간</span>

@@ -108,6 +108,7 @@ export const updateMember = async (formData: FormData) => {
     return;
   }
 
+  let membershipDuration: number | null = null;
   if (membershipSelection?.type === "assign") {
     const membership = await prisma.membership.findFirst({
       where: {
@@ -116,11 +117,12 @@ export const updateMember = async (formData: FormData) => {
           not: "DELETE",
         },
       },
-      select: { id: true },
+      select: { id: true, duration: true },
     });
     if (!membership) {
       return;
     }
+    membershipDuration = membership.duration;
   }
 
   await prisma.$transaction(async (transaction) => {
@@ -137,19 +139,24 @@ export const updateMember = async (formData: FormData) => {
       });
     }
 
-    if (membershipSelection?.type === "assign") {
+    if (membershipSelection?.type === "assign" && membershipDuration) {
+      const assignedAt = new Date();
+      const expiresAt = new Date(assignedAt);
+      expiresAt.setMonth(expiresAt.getMonth() + membershipDuration);
       await transaction.memberMembership.upsert({
         where: { memberId: id },
         update: {
           membershipId: membershipSelection.membershipId,
-          assignedAt: new Date(),
+          assignedAt,
+          expiresAt,
           pausedAt: null,
           totalPausedMs: 0,
         },
         create: {
           memberId: id,
           membershipId: membershipSelection.membershipId,
-          assignedAt: new Date(),
+          assignedAt,
+          expiresAt,
         },
       });
     }

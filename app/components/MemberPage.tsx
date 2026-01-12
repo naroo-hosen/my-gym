@@ -731,7 +731,7 @@ const MemberPage = ({
                   )}
                 </strong>
               </div>
-              <div className="detail-item">
+              <div className="detail-item detail-item--wide">
                 <span className="detail-label">회원권</span>
                 {editingField === "membershipId" ? (
                   <form
@@ -779,7 +779,7 @@ const MemberPage = ({
                   </div>
                 )}
               </div>
-              <div className="detail-item">
+              <div className="detail-item detail-item--wide">
                 <span className="detail-label">남은 기간</span>
                 <strong>
                   {selectedMembershipRemainingDays !== null

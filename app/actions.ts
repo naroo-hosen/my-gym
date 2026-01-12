@@ -31,19 +31,69 @@ export const createMember = async (formData: FormData) => {
 
 export const updateMember = async (formData: FormData) => {
   const id = Number(formData.get("id"));
-  const name = formData.get("name")?.toString().trim();
-  const phone = formData.get("phone")?.toString().trim();
+  const rawName = formData.get("name");
+  const rawPhone = formData.get("phone");
+  const rawBirthDate = formData.get("birthDate");
+  const rawGender = formData.get("gender");
+  const rawParentPhone = formData.get("parentPhone");
+  const rawMemo = formData.get("memo");
 
-  if (!id || !name || !phone) {
+  if (!id) {
+    return;
+  }
+
+  const data: {
+    name?: string;
+    phone?: string;
+    birthDate?: Date | null;
+    gender?: string | null;
+    parentPhone?: string | null;
+    memo?: string | null;
+  } = {};
+
+  if (rawName !== null) {
+    const name = rawName.toString().trim();
+    if (!name) {
+      return;
+    }
+    data.name = name;
+  }
+
+  if (rawPhone !== null) {
+    const phone = rawPhone.toString().trim();
+    if (!phone) {
+      return;
+    }
+    data.phone = phone;
+  }
+
+  if (rawBirthDate !== null) {
+    const birthDateValue = rawBirthDate.toString().trim();
+    data.birthDate = birthDateValue ? new Date(birthDateValue) : null;
+  }
+
+  if (rawGender !== null) {
+    const genderValue = rawGender.toString().trim();
+    data.gender = genderValue ? genderValue : null;
+  }
+
+  if (rawParentPhone !== null) {
+    const parentPhoneValue = rawParentPhone.toString().trim();
+    data.parentPhone = parentPhoneValue ? parentPhoneValue : null;
+  }
+
+  if (rawMemo !== null) {
+    const memoValue = rawMemo.toString().trim();
+    data.memo = memoValue ? memoValue : null;
+  }
+
+  if (Object.keys(data).length === 0) {
     return;
   }
 
   await prisma.member.update({
     where: { id },
-    data: {
-      name,
-      phone,
-    },
+    data,
   });
 
   revalidatePath("/");

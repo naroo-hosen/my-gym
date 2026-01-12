@@ -81,14 +81,45 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
-const getStatusLabel = (status: string, isPaused: boolean) => {
+const getStatusLabel = (
+  status: string,
+  isPaused: boolean,
+  hasMembership: boolean,
+) => {
   if (status === "DELETE") {
-    return { label: "중지", isDeleted: true, isPaused: false, icon: "⛔" };
+    return {
+      label: "중지",
+      isDeleted: true,
+      isPaused: false,
+      isMembershipActive: false,
+      icon: "⛔",
+    };
   }
   if (isPaused) {
-    return { label: "일시정지", isDeleted: false, isPaused: true, icon: "⏸️" };
+    return {
+      label: "일시정지",
+      isDeleted: false,
+      isPaused: true,
+      isMembershipActive: false,
+      icon: "⏸️",
+    };
   }
-  return { label: "정상", isDeleted: false, isPaused: false, icon: null };
+  if (hasMembership) {
+    return {
+      label: "회원권 보유",
+      isDeleted: false,
+      isPaused: false,
+      isMembershipActive: true,
+      icon: "✅",
+    };
+  }
+  return {
+    label: "정상",
+    isDeleted: false,
+    isPaused: false,
+    isMembershipActive: false,
+    icon: null,
+  };
 };
 
 const formatDateInput = (birthDate: string | null) => {
@@ -233,11 +264,12 @@ const MemberPage = ({
   );
   const selectedMemberNumber = selectedMember?.id ?? null;
   const selectedMemberStatus = selectedMember
-    ? getStatusLabel(
-        selectedMember.status,
-        Boolean(selectedMember.membershipPausedAt),
-      )
-    : null;
+      ? getStatusLabel(
+          selectedMember.status,
+          Boolean(selectedMember.membershipPausedAt),
+          Boolean(selectedMember.membershipId),
+        )
+      : null;
   const selectedMembershipRemainingDays = useMemo(
     () =>
       getRemainingDays(
@@ -822,6 +854,7 @@ const MemberPage = ({
                   const statusInfo = getStatusLabel(
                     member.status,
                     Boolean(member.membershipPausedAt),
+                    Boolean(member.membershipId),
                   );
                   const resolvedExpiryDate = resolveExpiryDate(
                     member.membershipExpiresAt,
@@ -873,6 +906,8 @@ const MemberPage = ({
                               ? " is-deleted"
                               : statusInfo.isPaused
                                 ? " is-paused"
+                                : statusInfo.isMembershipActive
+                                  ? " is-membership"
                                 : ""
                           }`}
                         >
@@ -1171,6 +1206,8 @@ const MemberPage = ({
                           ? " is-deleted"
                           : selectedMemberStatus.isPaused
                             ? " is-paused"
+                            : selectedMemberStatus.isMembershipActive
+                              ? " is-membership"
                             : ""
                       }`}
                     >

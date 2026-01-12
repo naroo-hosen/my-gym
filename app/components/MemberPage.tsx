@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { createMember, deleteMember } from "@/app/actions";
+import { useEffect, useMemo, useState } from "react";
+import { createMember, deleteMember, updateMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -42,12 +42,28 @@ const getStatusLabel = (status: string) => {
   return { label: "정상", isDeleted: false };
 };
 
+const formatDateInput = (birthDate: string | null) => {
+  if (!birthDate) return "";
+  const date = new Date(birthDate);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().split("T")[0];
+};
+
+type EditableField =
+  | "name"
+  | "phone"
+  | "birthDate"
+  | "gender"
+  | "parentPhone"
+  | "memo";
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
+  const [editingField, setEditingField] = useState<EditableField | null>(null);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
   const selectedMember = useMemo(
@@ -78,6 +94,18 @@ const MemberPage = ({ members }: MemberPageProps) => {
   const handlePageChange = (nextPage: number) => {
     const safePage = Math.min(Math.max(nextPage, 1), totalPages);
     setPage(safePage);
+  };
+
+  useEffect(() => {
+    setEditingField(null);
+  }, [selectedMemberId]);
+
+  const startEdit = (field: EditableField) => {
+    setEditingField(field);
+  };
+
+  const closeEdit = () => {
+    setEditingField(null);
   };
 
   return (
@@ -261,9 +289,6 @@ const MemberPage = ({ members }: MemberPageProps) => {
             <div className="panel-header">
               <h2>회원 상세</h2>
               <div className="panel-actions">
-                <button className="button-secondary" type="button">
-                  수정
-                </button>
                 <button
                   className="button-danger"
                   type="button"
@@ -280,19 +305,133 @@ const MemberPage = ({ members }: MemberPageProps) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">이름</span>
-                <strong>{selectedMember.name}</strong>
+                {editingField === "name" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <input
+                      name="name"
+                      defaultValue={selectedMember.name}
+                      required
+                    />
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMember.name}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("name")}
+                      aria-label="이름 수정"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="detail-item">
                 <span className="detail-label">전화번호</span>
-                <strong>{selectedMember.phone}</strong>
+                {editingField === "phone" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <PhoneInput
+                      id="phone-edit"
+                      name="phone"
+                      defaultValue={selectedMember.phone}
+                      required
+                    />
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMember.phone}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("phone")}
+                      aria-label="전화번호 수정"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="detail-item">
                 <span className="detail-label">생년월일</span>
-                <strong>
-                  {selectedMember.birthDate
-                    ? new Date(selectedMember.birthDate).toLocaleDateString("ko-KR")
-                    : "-"}
-                </strong>
+                {editingField === "birthDate" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <input
+                      name="birthDate"
+                      type="date"
+                      defaultValue={formatDateInput(selectedMember.birthDate)}
+                    />
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>
+                      {selectedMember.birthDate
+                        ? new Date(selectedMember.birthDate).toLocaleDateString(
+                            "ko-KR",
+                          )
+                        : "-"}
+                    </strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("birthDate")}
+                      aria-label="생년월일 수정"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="detail-item">
                 <span className="detail-label">나이</span>
@@ -300,11 +439,89 @@ const MemberPage = ({ members }: MemberPageProps) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">성별</span>
-                <strong>{selectedMember.gender || "-"}</strong>
+                {editingField === "gender" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <select
+                      name="gender"
+                      defaultValue={selectedMember.gender || ""}
+                    >
+                      <option value="">선택</option>
+                      <option value="남성">남성</option>
+                      <option value="여성">여성</option>
+                      <option value="기타">기타</option>
+                    </select>
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMember.gender || "-"}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("gender")}
+                      aria-label="성별 수정"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="detail-item">
                 <span className="detail-label">부모님 연락처</span>
-                <strong>{selectedMember.parentPhone || "-"}</strong>
+                {editingField === "parentPhone" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <PhoneInput
+                      id="parentPhone-edit"
+                      name="parentPhone"
+                      defaultValue={selectedMember.parentPhone || ""}
+                    />
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMember.parentPhone || "-"}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("parentPhone")}
+                      aria-label="부모님 연락처 수정"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="detail-item">
                 <span className="detail-label">등록일</span>
@@ -332,7 +549,44 @@ const MemberPage = ({ members }: MemberPageProps) => {
             </div>
             <div className="detail-memo">
               <span className="detail-label">메모</span>
-              <p>{selectedMember.memo || "-"}</p>
+              {editingField === "memo" ? (
+                <form
+                  action={updateMember}
+                  className="detail-edit-form"
+                  onSubmit={closeEdit}
+                >
+                  <input type="hidden" name="id" value={selectedMember.id} />
+                  <textarea
+                    name="memo"
+                    rows={3}
+                    defaultValue={selectedMember.memo || ""}
+                  />
+                  <div className="detail-edit-actions">
+                    <button className="button-primary" type="submit">
+                      저장
+                    </button>
+                    <button
+                      className="button-ghost"
+                      type="button"
+                      onClick={closeEdit}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="detail-memo-content">
+                  <p>{selectedMember.memo || "-"}</p>
+                  <button
+                    className="detail-edit-button"
+                    type="button"
+                    onClick={() => startEdit("memo")}
+                    aria-label="메모 수정"
+                  >
+                    <span aria-hidden="true">✏️</span>
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}

@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createMember, deleteMember, updateMember } from "@/app/actions";
+import {
+  createMember,
+  deleteMember,
+  restoreMember,
+  updateMember,
+} from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -73,7 +78,7 @@ const MemberPage = ({
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
+  const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
@@ -96,11 +101,10 @@ const MemberPage = ({
     }
 
     if (selectedMember.status === "DELETE") {
-      setIsAlreadyStoppedOpen(true);
-      return;
+      setPendingRestoreId(selectedMember.id);
+    } else {
+      setPendingDeleteId(selectedMember.id);
     }
-
-    setPendingDeleteId(selectedMember.id);
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
@@ -392,11 +396,15 @@ const MemberPage = ({
               <h2>회원 상세</h2>
               <div className="panel-actions">
                 <button
-                  className="button-danger"
+                  className={
+                    selectedMember.status === "DELETE"
+                      ? "button-primary"
+                      : "button-danger"
+                  }
                   type="button"
                   onClick={handleStopClick}
                 >
-                  중지
+                  {selectedMember.status === "DELETE" ? "복구" : "중지"}
                 </button>
               </div>
             </div>
@@ -722,18 +730,29 @@ const MemberPage = ({
         </div>
       )}
 
-      {isAlreadyStoppedOpen && (
+      {pendingRestoreId !== null && (
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
-            <p className="confirm-message">이미 중지된 회원입니다.</p>
+            <p className="confirm-message">
+              선택한 회원을 복구할까요? 복구 후에는 정상 상태로 전환됩니다.
+            </p>
             <div className="panel-actions center">
               <button
-                className="button-primary"
+                className="button-secondary"
                 type="button"
-                onClick={() => setIsAlreadyStoppedOpen(false)}
+                onClick={() => setPendingRestoreId(null)}
               >
-                확인
+                취소
               </button>
+              <form
+                action={restoreMember}
+                onSubmit={() => setPendingRestoreId(null)}
+              >
+                <input type="hidden" name="id" value={pendingRestoreId} />
+                <button className="button-primary" type="submit">
+                  복구하기
+                </button>
+              </form>
             </div>
           </div>
         </div>

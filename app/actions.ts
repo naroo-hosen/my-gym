@@ -116,6 +116,23 @@ export const deleteMember = async (formData: FormData) => {
   revalidatePath("/");
 };
 
+export const restoreMember = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return;
+  }
+
+  await prisma.member.update({
+    where: { id },
+    data: {
+      status: "ACTIVE",
+    },
+  });
+
+  revalidatePath("/");
+};
+
 export const createMembership = async (formData: FormData) => {
   const duration = Number(formData.get("duration"));
   const weeklyAttendance = Number(formData.get("weeklyAttendance"));
@@ -152,6 +169,23 @@ export const deleteMembership = async (formData: FormData) => {
     where: { id },
     data: {
       status: "DELETE",
+    },
+  });
+
+  revalidatePath("/");
+};
+
+export const restoreMembership = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return;
+  }
+
+  await prisma.membership.update({
+    where: { id },
+    data: {
+      status: "ACTIVE",
     },
   });
 

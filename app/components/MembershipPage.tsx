@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createMembership, deleteMembership } from "@/app/actions";
+import {
+  createMembership,
+  deleteMembership,
+  restoreMembership,
+} from "@/app/actions";
 
 type Membership = {
   id: number;
@@ -37,7 +41,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
   );
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
+  const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
 
   const countLabel = useMemo(
     () => `총 ${memberships.length}개`,
@@ -59,11 +63,10 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
     }
 
     if (selectedMembership.status === "DELETE") {
-      setIsAlreadyStoppedOpen(true);
-      return;
+      setPendingRestoreId(selectedMembership.id);
+    } else {
+      setPendingDeleteId(selectedMembership.id);
     }
-
-    setPendingDeleteId(selectedMembership.id);
   };
 
   const filteredTotalPages = Math.max(
@@ -90,6 +93,14 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
   const handleDeleteMembership = async (formData: FormData) => {
     await deleteMembership(formData);
     setPendingDeleteId(null);
+    startTransition(() => {
+      router.refresh();
+    });
+  };
+
+  const handleRestoreMembership = async (formData: FormData) => {
+    await restoreMembership(formData);
+    setPendingRestoreId(null);
     startTransition(() => {
       router.refresh();
     });
@@ -269,11 +280,15 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
               <h2>회원권 상세</h2>
               <div className="panel-actions">
                 <button
-                  className="button-danger"
+                  className={
+                    selectedMembership.status === "DELETE"
+                      ? "button-primary"
+                      : "button-danger"
+                  }
                   type="button"
                   onClick={handleStopClick}
                 >
-                  중지
+                  {selectedMembership.status === "DELETE" ? "복구" : "중지"}
                 </button>
               </div>
             </div>
@@ -351,18 +366,26 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
         </div>
       )}
 
-      {isAlreadyStoppedOpen && (
+      {pendingRestoreId !== null && (
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
-            <p className="confirm-message">이미 중지된 회원권입니다.</p>
+            <p className="confirm-message">
+              선택한 회원권을 복구할까요? 복구 후에는 정상 상태로 전환됩니다.
+            </p>
             <div className="panel-actions center">
               <button
-                className="button-primary"
+                className="button-secondary"
                 type="button"
-                onClick={() => setIsAlreadyStoppedOpen(false)}
+                onClick={() => setPendingRestoreId(null)}
               >
-                확인
+                취소
               </button>
+              <form action={handleRestoreMembership}>
+                <input type="hidden" name="id" value={pendingRestoreId} />
+                <button className="button-primary" type="submit">
+                  복구하기
+                </button>
+              </form>
             </div>
           </div>
         </div>

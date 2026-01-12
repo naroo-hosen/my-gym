@@ -112,9 +112,14 @@ const MemberPage = ({
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
+  const [pendingMembershipAction, setPendingMembershipAction] = useState<{
+    type: "assign" | "clear";
+    membershipId: string;
+  } | null>(null);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
+  const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const membershipOptions = useMemo(
     () =>
       memberships.map((membership) => ({
@@ -190,6 +195,12 @@ const MemberPage = ({
   }, [selectedMemberId]);
 
   useEffect(() => {
+    if (editingField === "membershipId") {
+      setMembershipDraftValue(selectedMembershipValue);
+    }
+  }, [editingField, selectedMembershipValue]);
+
+  useEffect(() => {
     setPage(1);
   }, [searchTerm, searchField]);
 
@@ -249,6 +260,24 @@ const MemberPage = ({
 
   const closeEdit = () => {
     setEditingField(null);
+  };
+
+  const handleMembershipSave = () => {
+    if (membershipDraftValue === selectedMembershipValue) {
+      closeEdit();
+      return;
+    }
+    if (membershipDraftValue === "none") {
+      setPendingMembershipAction({
+        type: "clear",
+        membershipId: "none",
+      });
+    } else {
+      setPendingMembershipAction({
+        type: "assign",
+        membershipId: membershipDraftValue,
+      });
+    }
   };
 
   return (
@@ -743,7 +772,10 @@ const MemberPage = ({
                     <select
                       className="membership-select"
                       name="membershipId"
-                      defaultValue={selectedMembershipValue}
+                      value={membershipDraftValue}
+                      onChange={(event) =>
+                        setMembershipDraftValue(event.target.value)
+                      }
                     >
                       <option value="none">선택 안 함</option>
                       {membershipOptions.map((membership) => (
@@ -753,7 +785,11 @@ const MemberPage = ({
                       ))}
                     </select>
                     <div className="detail-edit-actions">
-                      <button className="button-primary" type="submit">
+                      <button
+                        className="button-primary"
+                        type="button"
+                        onClick={handleMembershipSave}
+                      >
                         저장
                       </button>
                       <button
@@ -854,6 +890,44 @@ const MemberPage = ({
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
                   중지하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMembershipAction && selectedMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              {pendingMembershipAction.type === "assign"
+                ? "회원권을 부여하면 지금부터 바로 적용됩니다. 진행할까요?"
+                : "회원권 부여를 취소하면 복구할 수 없습니다. 진행할까요?"}
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingMembershipAction(null)}
+              >
+                취소
+              </button>
+              <form
+                action={updateMember}
+                onSubmit={() => {
+                  setPendingMembershipAction(null);
+                  closeEdit();
+                }}
+              >
+                <input type="hidden" name="id" value={selectedMember.id} />
+                <input
+                  type="hidden"
+                  name="membershipId"
+                  value={pendingMembershipAction.membershipId}
+                />
+                <button className="button-primary" type="submit">
+                  확인
                 </button>
               </form>
             </div>

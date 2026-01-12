@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createMembership, deleteMembership } from "@/app/actions";
 
 type Membership = {
@@ -28,6 +29,8 @@ const getStatusLabel = (status: string) => {
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
 const MembershipPage = ({ memberships }: MembershipPageProps) => {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMembershipId, setSelectedMembershipId] = useState<number | null>(
     null,
@@ -76,6 +79,22 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
     setPage(safePage);
   };
 
+  const handleCreateMembership = async (formData: FormData) => {
+    await createMembership(formData);
+    setIsCreateOpen(false);
+    startTransition(() => {
+      router.refresh();
+    });
+  };
+
+  const handleDeleteMembership = async (formData: FormData) => {
+    await deleteMembership(formData);
+    setPendingDeleteId(null);
+    startTransition(() => {
+      router.refresh();
+    });
+  };
+
   return (
     <div className="content">
       <header className="page-header">
@@ -107,10 +126,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                 닫기
               </button>
             </div>
-            <form
-              action={createMembership}
-              onSubmit={() => setIsCreateOpen(false)}
-            >
+            <form action={handleCreateMembership}>
               <div className="grid">
                 <div>
                   <label htmlFor="duration">유효기간 (개월)</label>
@@ -119,6 +135,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                     name="duration"
                     type="number"
                     min={1}
+                    step={1}
                     placeholder="예: 1"
                     required
                   />
@@ -322,8 +339,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                 취소
               </button>
               <form
-                action={deleteMembership}
-                onSubmit={() => setPendingDeleteId(null)}
+                action={handleDeleteMembership}
               >
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">

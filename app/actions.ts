@@ -122,7 +122,7 @@ export const createMembership = async (formData: FormData) => {
   const price = Number(formData.get("price"));
 
   if (
-    Number.isNaN(duration) ||
+    !Number.isInteger(duration) ||
     duration <= 0 ||
     Number.isNaN(weeklyAttendance) ||
     Number.isNaN(price)

@@ -47,6 +47,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
   const selectedMember = useMemo(
@@ -63,7 +64,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
     }
 
     if (selectedMember.status === "DELETE") {
-      window.alert("이미 중지된 회원입니다.");
+      setIsAlreadyStoppedOpen(true);
       return;
     }
 
@@ -360,6 +361,23 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   중지하기
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAlreadyStoppedOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">이미 중지된 회원입니다.</p>
+            <div className="panel-actions center">
+              <button
+                className="button-primary"
+                type="button"
+                onClick={() => setIsAlreadyStoppedOpen(false)}
+              >
+                확인
+              </button>
             </div>
           </div>
         </div>

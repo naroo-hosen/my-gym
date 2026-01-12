@@ -57,6 +57,18 @@ const MemberPage = ({ members }: MemberPageProps) => {
   const selectedMemberStatus = selectedMember
     ? getStatusLabel(selectedMember.status)
     : null;
+  const handleStopClick = () => {
+    if (!selectedMember) {
+      return;
+    }
+
+    if (selectedMember.status === "DELETE") {
+      window.alert("이미 중지된 회원입니다.");
+      return;
+    }
+
+    setPendingDeleteId(selectedMember.id);
+  };
   const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -226,7 +238,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                           }`}
                         >
                           {statusInfo.isDeleted && (
-                            <span aria-hidden="true">⏹️</span>
+                            <span aria-hidden="true">⛔</span>
                           )}
                           {statusInfo.label}
                         </span>
@@ -254,7 +266,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <button
                   className="button-danger"
                   type="button"
-                  onClick={() => setPendingDeleteId(selectedMember.id)}
+                  onClick={handleStopClick}
                 >
                   중지
                 </button>
@@ -309,7 +321,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                       }`}
                     >
                       {selectedMemberStatus.isDeleted && (
-                        <span aria-hidden="true">⏹️</span>
+                        <span aria-hidden="true">⛔</span>
                       )}
                       {selectedMemberStatus.label}
                     </span>

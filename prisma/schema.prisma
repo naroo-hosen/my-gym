@@ -21,7 +21,7 @@ model Member {
 
 model Membership {
   id               Int      @id @default(autoincrement())
-  duration         String
+  duration         Int
   weeklyAttendance Int
   price            Int
   status           String   @default("ACTIVE")

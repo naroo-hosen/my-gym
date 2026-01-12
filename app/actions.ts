@@ -117,11 +117,16 @@ export const deleteMember = async (formData: FormData) => {
 };
 
 export const createMembership = async (formData: FormData) => {
-  const duration = formData.get("duration")?.toString().trim();
+  const duration = Number(formData.get("duration"));
   const weeklyAttendance = Number(formData.get("weeklyAttendance"));
   const price = Number(formData.get("price"));
 
-  if (!duration || Number.isNaN(weeklyAttendance) || Number.isNaN(price)) {
+  if (
+    Number.isNaN(duration) ||
+    duration <= 0 ||
+    Number.isNaN(weeklyAttendance) ||
+    Number.isNaN(price)
+  ) {
     return;
   }
 

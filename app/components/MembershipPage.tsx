@@ -5,7 +5,7 @@ import { createMembership, deleteMembership } from "@/app/actions";
 
 type Membership = {
   id: number;
-  duration: string;
+  duration: number;
   weeklyAttendance: number;
   price: number;
   status: string;
@@ -113,11 +113,13 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
             >
               <div className="grid">
                 <div>
-                  <label htmlFor="duration">유효기간</label>
+                  <label htmlFor="duration">유효기간 (개월)</label>
                   <input
                     id="duration"
                     name="duration"
-                    placeholder="예: 1개월"
+                    type="number"
+                    min={1}
+                    placeholder="예: 1"
                     required
                   />
                 </div>
@@ -212,7 +214,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                       }
                     >
                       <td className="number">{membership.id}</td>
-                      <td>{membership.duration}</td>
+                      <td>{membership.duration}개월</td>
                       <td>{membership.weeklyAttendance}회</td>
                       <td>{formatPrice(membership.price)}</td>
                       <td>
@@ -265,7 +267,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">유효기간</span>
-                <strong>{selectedMembership.duration}</strong>
+                <strong>{selectedMembership.duration}개월</strong>
               </div>
               <div className="detail-item">
                 <span className="detail-label">주간 출석 횟수</span>

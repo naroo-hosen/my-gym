@@ -112,6 +112,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     membershipId: member.memberMemberships[0]?.membershipId ?? null,
     membershipAssignedAt:
       member.memberMemberships[0]?.assignedAt.toISOString() ?? null,
+    membershipExpiresAt:
+      member.memberMemberships[0]?.expiresAt?.toISOString() ?? null,
     membershipDuration:
       member.memberMemberships[0]?.membership?.duration ?? null,
     membershipPausedAt:
@@ -137,9 +139,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : (
         <MemberPage
           members={serializedMembers}
-          memberships={serializedMemberships.filter(
-            (membership) => membership.status !== "DELETE",
-          )}
+          memberships={serializedMemberships}
           searchTerm={searchTerm}
           searchField={searchField}
           membershipFilter={membershipFilter}

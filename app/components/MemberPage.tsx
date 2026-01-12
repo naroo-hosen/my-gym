@@ -226,7 +226,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                           }`}
                         >
                           {statusInfo.isDeleted && (
-                            <span aria-hidden="true">⏸</span>
+                            <span aria-hidden="true">⏹️</span>
                           )}
                           {statusInfo.label}
                         </span>
@@ -256,7 +256,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   type="button"
                   onClick={() => setPendingDeleteId(selectedMember.id)}
                 >
-                  삭제
+                  중지
                 </button>
               </div>
             </div>
@@ -309,7 +309,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                       }`}
                     >
                       {selectedMemberStatus.isDeleted && (
-                        <span aria-hidden="true">⏸</span>
+                        <span aria-hidden="true">⏹️</span>
                       )}
                       {selectedMemberStatus.label}
                     </span>
@@ -329,7 +329,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
             <p className="confirm-message">
-              선택한 회원을 삭제할까요? 삭제 후에는 복구할 수 없습니다.
+              선택한 회원을 중지할까요? 중지 후에는 복구할 수 없습니다.
             </p>
             <div className="panel-actions center">
               <button
@@ -339,10 +339,13 @@ const MemberPage = ({ members }: MemberPageProps) => {
               >
                 취소
               </button>
-              <form action={deleteMember}>
+              <form
+                action={deleteMember}
+                onSubmit={() => setPendingDeleteId(null)}
+              >
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
-                  삭제하기
+                  중지하기
                 </button>
               </form>
             </div>

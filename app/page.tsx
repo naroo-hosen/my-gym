@@ -8,6 +8,8 @@ type HomePageProps = {
     q?: string;
     field?: string;
     section?: string;
+    membership?: string;
+    status?: string;
   };
 };
 
@@ -16,16 +18,34 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
   const searchField = searchParams?.field === "phone" ? "phone" : "name";
   const section = searchParams?.section === "membership" ? "membership" : "member";
+  const membershipFilter =
+    searchParams?.membership === "with" || searchParams?.membership === "without"
+      ? searchParams.membership
+      : "all";
+  const statusFilterParam =
+    typeof searchParams?.status === "string" ? searchParams.status : "";
+  const statusFilters = statusFilterParam
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value === "ACTIVE" || value === "DELETE");
 
   const [members, memberships] = await Promise.all([
     prisma.member.findMany({
-      where: searchTerm
-        ? {
-            [searchField]: {
-              contains: searchTerm,
-            },
-          }
-        : undefined,
+      where: {
+        ...(searchTerm
+          ? {
+              [searchField]: {
+                contains: searchTerm,
+              },
+            }
+          : {}),
+        ...(statusFilters.length > 0 ? { status: { in: statusFilters } } : {}),
+        ...(membershipFilter === "with"
+          ? { memberMemberships: { some: {} } }
+          : membershipFilter === "without"
+            ? { memberMemberships: { none: {} } }
+            : {}),
+      },
       include: {
         memberMemberships: {
           include: {
@@ -90,6 +110,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           )}
           searchTerm={searchTerm}
           searchField={searchField}
+          membershipFilter={membershipFilter}
+          statusFilters={statusFilters}
           section={section}
         />
       )}

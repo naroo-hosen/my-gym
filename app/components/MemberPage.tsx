@@ -43,12 +43,20 @@ type MemberPageProps = {
   memberships: Membership[];
   searchTerm: string;
   searchField: "name" | "phone";
+  membershipFilter: MembershipFilter;
+  statusFilters: StatusFilter[];
   section: "member" | "membership";
 };
 
 type MembershipFilter = "all" | "with" | "without";
+type MembershipFilterOption = "with" | "without";
+type StatusFilter = "ACTIVE" | "DELETE";
 
 const PAGE_SIZE = 8;
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "ACTIVE", label: "정상" },
+  { value: "DELETE", label: "중지" },
+];
 
 const getAge = (birthDate: string | null) => {
   if (!birthDate) return null;
@@ -119,6 +127,8 @@ const MemberPage = ({
   memberships,
   searchTerm,
   searchField,
+  membershipFilter,
+  statusFilters,
   section,
 }: MemberPageProps) => {
   const router = useRouter();
@@ -138,8 +148,12 @@ const MemberPage = ({
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
-  const [membershipFilter, setMembershipFilter] =
-    useState<MembershipFilter>("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [membershipSelections, setMembershipSelections] = useState<
+    MembershipFilterOption[]
+  >([]);
+  const [statusSelections, setStatusSelections] =
+    useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const membershipOptions = useMemo(
     () =>
@@ -150,18 +164,9 @@ const MemberPage = ({
     [memberships],
   );
 
-  const filteredMembers = useMemo(() => {
-    if (membershipFilter === "with") {
-      return members.filter((member) => member.membershipId !== null);
-    }
-    if (membershipFilter === "without") {
-      return members.filter((member) => member.membershipId === null);
-    }
-    return members;
-  }, [members, membershipFilter]);
   const countLabel = useMemo(
-    () => `총 ${filteredMembers.length}명`,
-    [filteredMembers.length],
+    () => `총 ${members.length}명`,
+    [members.length],
   );
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
@@ -238,14 +243,11 @@ const MemberPage = ({
 
     setPendingPauseMemberId(selectedMember.id);
   };
-  const filteredTotalPages = Math.max(
-    1,
-    Math.ceil(filteredMembers.length / PAGE_SIZE),
-  );
+  const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return filteredMembers.slice(start, start + PAGE_SIZE);
-  }, [filteredMembers, page]);
+    return members.slice(start, start + PAGE_SIZE);
+  }, [members, page]);
   const handlePageChange = (nextPage: number) => {
     const safePage = Math.min(Math.max(nextPage, 1), filteredTotalPages);
     setPage(safePage);
@@ -261,9 +263,27 @@ const MemberPage = ({
     }
   }, [editingField, selectedMembershipValue]);
 
+  const resolvedStatusSelections = useMemo(() => {
+    if (statusFilters.length === 0) {
+      return STATUS_OPTIONS.map((option) => option.value);
+    }
+    return statusFilters;
+  }, [statusFilters]);
+
+  useEffect(() => {
+    if (membershipFilter === "with") {
+      setMembershipSelections(["with"]);
+    } else if (membershipFilter === "without") {
+      setMembershipSelections(["without"]);
+    } else {
+      setMembershipSelections(["with", "without"]);
+    }
+    setStatusSelections(resolvedStatusSelections);
+  }, [membershipFilter, resolvedStatusSelections]);
+
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, searchField, membershipFilter]);
+  }, [searchTerm, searchField, membershipFilter, resolvedStatusSelections]);
 
   useEffect(() => {
     if (!selectedMemberId) return;
@@ -278,6 +298,49 @@ const MemberPage = ({
     setDraftSearchField(searchField);
   }, [searchField, searchTerm]);
 
+  const buildQueryParams = (
+    term: string,
+    field: "name" | "phone",
+    membership: MembershipFilterOption[],
+    statuses: StatusFilter[],
+  ) => {
+    const params = new URLSearchParams();
+    const trimmedTerm = term.trim();
+
+    if (trimmedTerm) {
+      params.set("q", trimmedTerm);
+    }
+    params.set("field", field);
+
+    if (membership.length === 1) {
+      params.set("membership", membership[0]);
+    }
+
+    const uniqueStatuses = Array.from(new Set(statuses));
+    if (uniqueStatuses.length > 0 && uniqueStatuses.length < STATUS_OPTIONS.length) {
+      params.set("status", uniqueStatuses.join(","));
+    }
+
+    if (section === "membership") {
+      params.set("section", "membership");
+    }
+
+    return params;
+  };
+
+  const pushQuery = (
+    term: string,
+    field: "name" | "phone",
+    membership: MembershipFilterOption[],
+    statuses: StatusFilter[],
+  ) => {
+    const params = buildQueryParams(term, field, membership, statuses);
+    const query = params.toString();
+    startTransition(() => {
+      router.push(query ? `/?${query}` : "/");
+    });
+  };
+
   useEffect(() => {
     if (
       draftSearchTerm === searchTerm &&
@@ -286,23 +349,12 @@ const MemberPage = ({
       return;
     }
     const handler = setTimeout(() => {
-      const params = new URLSearchParams();
-      const trimmedTerm = draftSearchTerm.trim();
-
-      if (trimmedTerm) {
-        params.set("q", trimmedTerm);
-      }
-      params.set("field", draftSearchField);
-      if (section === "membership") {
-        params.set("section", "membership");
-      } else {
-        params.delete("section");
-      }
-
-      const query = params.toString();
-      startTransition(() => {
-        router.push(query ? `/?${query}` : "/");
-      });
+      pushQuery(
+        draftSearchTerm,
+        draftSearchField,
+        membershipSelections,
+        statusSelections,
+      );
     }, 300);
 
     return () => clearTimeout(handler);
@@ -313,6 +365,41 @@ const MemberPage = ({
     searchField,
     searchTerm,
     startTransition,
+  ]);
+
+  const currentMembershipParam =
+    membershipSelections.length === 1 ? membershipSelections[0] : "all";
+  const currentStatusParam = Array.from(new Set(statusSelections)).sort().join(",");
+  const initialStatusParam = Array.from(
+    new Set(resolvedStatusSelections),
+  )
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (
+      (membershipFilter === "all" && currentMembershipParam === "all") ||
+      membershipFilter === currentMembershipParam
+    ) {
+      if (currentStatusParam === initialStatusParam) {
+        return;
+      }
+    }
+    pushQuery(
+      draftSearchTerm,
+      draftSearchField,
+      membershipSelections,
+      statusSelections,
+    );
+  }, [
+    currentMembershipParam,
+    currentStatusParam,
+    draftSearchField,
+    draftSearchTerm,
+    initialStatusParam,
+    membershipFilter,
+    membershipSelections,
+    statusSelections,
   ]);
 
   const startEdit = (field: EditableField) => {
@@ -429,25 +516,72 @@ const MemberPage = ({
               className="search-form"
               onSubmit={(event) => event.preventDefault()}
             >
-              <select
-                className="search-field-select"
-                value={membershipFilter}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setMembershipFilter(
-                    value === "with"
-                      ? "with"
-                      : value === "without"
-                        ? "without"
-                        : "all",
-                  );
-                }}
-                aria-label="회원권 보유 여부"
-              >
-                <option value="all">전체</option>
-                <option value="with">회원권 있음</option>
-                <option value="without">회원권 없음</option>
-              </select>
+              <div className="filter-wrap">
+                <button
+                  className="button-ghost filter-button"
+                  type="button"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
+                  aria-expanded={isFilterOpen}
+                  aria-controls="member-filter-panel"
+                >
+                  <span aria-hidden="true">🔍</span>
+                  필터
+                </button>
+                {isFilterOpen && (
+                  <div className="filter-panel" id="member-filter-panel">
+                    <div className="filter-group">
+                      <span className="filter-title">회원권</span>
+                      <label className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={membershipSelections.includes("with")}
+                          onChange={() =>
+                            setMembershipSelections((prev) =>
+                              prev.includes("with")
+                                ? prev.filter((value) => value !== "with")
+                                : [...prev, "with"],
+                            )
+                          }
+                        />
+                        회원권 있음
+                      </label>
+                      <label className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={membershipSelections.includes("without")}
+                          onChange={() =>
+                            setMembershipSelections((prev) =>
+                              prev.includes("without")
+                                ? prev.filter((value) => value !== "without")
+                                : [...prev, "without"],
+                            )
+                          }
+                        />
+                        회원권 없음
+                      </label>
+                    </div>
+                    <div className="filter-group">
+                      <span className="filter-title">회원 상태</span>
+                      {STATUS_OPTIONS.map((option) => (
+                        <label key={option.value} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={statusSelections.includes(option.value)}
+                            onChange={() =>
+                              setStatusSelections((prev) =>
+                                prev.includes(option.value)
+                                  ? prev.filter((value) => value !== option.value)
+                                  : [...prev, option.value],
+                              )
+                            }
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <select
                 className="search-field-select"
                 value={draftSearchField}
@@ -493,7 +627,7 @@ const MemberPage = ({
             </div>
           </div>
         </div>
-        {filteredMembers.length === 0 ? (
+        {members.length === 0 ? (
           <p className="empty">
             {searchTerm.trim()
               ? "검색 결과가 없습니다."

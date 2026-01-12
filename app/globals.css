@@ -211,6 +211,33 @@ section {
   z-index: 1;
 }
 
+.member-table .sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.member-table .sort-button:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.member-table .sort-indicator {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.member-table .sort-button.is-active .sort-indicator {
+  color: #4f46e5;
+}
+
 .member-table tbody tr:hover {
   background: #f9fafb;
 }

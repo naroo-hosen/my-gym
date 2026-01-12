@@ -2,8 +2,27 @@ import { prisma } from "@/lib/prisma";
 import MemberPage from "@/app/components/MemberPage";
 import Sidebar from "@/app/components/Sidebar";
 
-const HomePage = async () => {
+type HomePageProps = {
+  searchParams?: {
+    q?: string;
+    field?: string;
+  };
+};
+
+const HomePage = async ({ searchParams }: HomePageProps) => {
+  const searchTerm =
+    typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
+  const searchField = searchParams?.field === "phone" ? "phone" : "name";
+
   const members = await prisma.member.findMany({
+    where: searchTerm
+      ? {
+          [searchField]: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
+        }
+      : undefined,
     orderBy: {
       createdAt: "desc",
     },
@@ -25,7 +44,11 @@ const HomePage = async () => {
     <main className="page">
       <Sidebar />
 
-      <MemberPage members={serializedMembers} />
+      <MemberPage
+        members={serializedMembers}
+        searchTerm={searchTerm}
+        searchField={searchField}
+      />
     </main>
   );
 };

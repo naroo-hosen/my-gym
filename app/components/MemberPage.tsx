@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createMember, deleteMember, updateMember } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
@@ -18,6 +19,8 @@ type Member = {
 
 type MemberPageProps = {
   members: Member[];
+  searchTerm: string;
+  searchField: "name" | "phone";
 };
 
 const PAGE_SIZE = 8;
@@ -57,33 +60,25 @@ type EditableField =
   | "parentPhone"
   | "memo";
 
-const MemberPage = ({ members }: MemberPageProps) => {
+const MemberPage = ({
+  members,
+  searchTerm,
+  searchField,
+}: MemberPageProps) => {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredMembers = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return members;
-    return members.filter((member) => {
-      const name = member.name.toLowerCase();
-      const phone = member.phone.replace(/[^0-9]/g, "");
-      const normalizedKeyword = keyword.replace(/[^0-9a-z]/g, "");
-      return (
-        name.includes(keyword) ||
-        phone.includes(normalizedKeyword) ||
-        member.phone.toLowerCase().includes(keyword)
-      );
-    });
-  }, [members, searchTerm]);
+  const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
+  const [draftSearchField, setDraftSearchField] = useState(searchField);
 
   const countLabel = useMemo(
-    () => `총 ${filteredMembers.length}명`,
-    [filteredMembers.length],
+    () => `총 ${members.length}명`,
+    [members.length],
   );
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
@@ -105,14 +100,11 @@ const MemberPage = ({ members }: MemberPageProps) => {
 
     setPendingDeleteId(selectedMember.id);
   };
-  const filteredTotalPages = Math.max(
-    1,
-    Math.ceil(filteredMembers.length / PAGE_SIZE),
-  );
+  const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return filteredMembers.slice(start, start + PAGE_SIZE);
-  }, [filteredMembers, page]);
+    return members.slice(start, start + PAGE_SIZE);
+  }, [members, page]);
   const handlePageChange = (nextPage: number) => {
     const safePage = Math.min(Math.max(nextPage, 1), filteredTotalPages);
     setPage(safePage);
@@ -124,17 +116,52 @@ const MemberPage = ({ members }: MemberPageProps) => {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, searchField]);
 
   useEffect(() => {
     if (!selectedMemberId) return;
-    const exists = filteredMembers.some(
-      (member) => member.id === selectedMemberId,
-    );
+    const exists = members.some((member) => member.id === selectedMemberId);
     if (!exists) {
       setSelectedMemberId(null);
     }
-  }, [filteredMembers, selectedMemberId]);
+  }, [members, selectedMemberId]);
+
+  useEffect(() => {
+    setDraftSearchTerm(searchTerm);
+    setDraftSearchField(searchField);
+  }, [searchField, searchTerm]);
+
+  useEffect(() => {
+    if (
+      draftSearchTerm === searchTerm &&
+      draftSearchField === searchField
+    ) {
+      return;
+    }
+    const handler = setTimeout(() => {
+      const params = new URLSearchParams();
+      const trimmedTerm = draftSearchTerm.trim();
+
+      if (trimmedTerm) {
+        params.set("q", trimmedTerm);
+      }
+      params.set("field", draftSearchField);
+
+      const query = params.toString();
+      startTransition(() => {
+        router.push(query ? `/?${query}` : "/");
+      });
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [
+    draftSearchField,
+    draftSearchTerm,
+    router,
+    searchField,
+    searchTerm,
+    startTransition,
+  ]);
 
   const startEdit = (field: EditableField) => {
     setEditingField(field);
@@ -228,14 +255,32 @@ const MemberPage = ({ members }: MemberPageProps) => {
         <div className="panel-header">
           <h2>회원 목록</h2>
           <div className="list-panel-actions">
-            <div className="search-bar">
-              <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="이름 또는 전화번호로 검색"
-                aria-label="이름 또는 전화번호로 검색"
-              />
-            </div>
+            <form
+              className="search-form"
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <select
+                className="search-field-select"
+                value={draftSearchField}
+                onChange={(event) =>
+                  setDraftSearchField(
+                    event.target.value === "phone" ? "phone" : "name",
+                  )
+                }
+                aria-label="검색 기준"
+              >
+                <option value="name">이름</option>
+                <option value="phone">전화번호</option>
+              </select>
+              <div className="search-bar">
+                <input
+                  value={draftSearchTerm}
+                  onChange={(event) => setDraftSearchTerm(event.target.value)}
+                  placeholder="검색어를 입력하세요"
+                  aria-label="검색어 입력"
+                />
+              </div>
+            </form>
             <div className="pagination">
               <button
                 className="button-ghost"
@@ -259,7 +304,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
             </div>
           </div>
         </div>
-        {filteredMembers.length === 0 ? (
+        {members.length === 0 ? (
           <p className="empty">
             {searchTerm.trim()
               ? "검색 결과가 없습니다."

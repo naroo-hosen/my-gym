@@ -279,6 +279,16 @@ section {
   flex-wrap: wrap;
 }
 
+.search-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-field-select {
+  min-width: 110px;
+}
+
 .search-bar {
   min-width: 220px;
 }

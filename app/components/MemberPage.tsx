@@ -12,6 +12,7 @@ type Member = {
   gender: string | null;
   parentPhone: string | null;
   memo: string | null;
+  status: string;
   createdAt: string;
 };
 
@@ -34,11 +35,19 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
+const getStatusLabel = (status: string) => {
+  if (status === "DELETE") {
+    return { label: "중지", isDeleted: true };
+  }
+  return { label: "정상", isDeleted: false };
+};
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
 
   const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
   const selectedMember = useMemo(
@@ -46,6 +55,21 @@ const MemberPage = ({ members }: MemberPageProps) => {
     [members, selectedMemberId],
   );
   const selectedMemberNumber = selectedMember?.id ?? null;
+  const selectedMemberStatus = selectedMember
+    ? getStatusLabel(selectedMember.status)
+    : null;
+  const handleStopClick = () => {
+    if (!selectedMember) {
+      return;
+    }
+
+    if (selectedMember.status === "DELETE") {
+      setIsAlreadyStoppedOpen(true);
+      return;
+    }
+
+    setPendingDeleteId(selectedMember.id);
+  };
   const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -176,37 +200,53 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
                   <th>등록일</th>
+                  <th>상태</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedMembers.map((member) => (
-                  <tr
-                    key={member.id}
-                    className={
-                      selectedMemberId === member.id ? "row active" : "row"
-                    }
-                    onClick={() =>
-                      setSelectedMemberId((prev) =>
-                        prev === member.id ? null : member.id,
-                      )
-                    }
-                  >
-                    <td className="number">{member.id}</td>
-                    <td>{member.name}</td>
-                    <td>
-                      {member.birthDate
-                        ? new Date(member.birthDate).toLocaleDateString("ko-KR")
-                        : "-"}
-                    </td>
-                    <td>{getAge(member.birthDate) ?? "-"}</td>
-                    <td>{member.gender || "-"}</td>
-                    <td>{member.parentPhone || "-"}</td>
-                    <td>{member.phone}</td>
-                    <td>
-                      {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                    </td>
-                  </tr>
-                ))}
+                {pagedMembers.map((member) => {
+                  const statusInfo = getStatusLabel(member.status);
+                  return (
+                    <tr
+                      key={member.id}
+                      className={
+                        selectedMemberId === member.id ? "row active" : "row"
+                      }
+                      onClick={() =>
+                        setSelectedMemberId((prev) =>
+                          prev === member.id ? null : member.id,
+                        )
+                      }
+                    >
+                      <td className="number">{member.id}</td>
+                      <td>{member.name}</td>
+                      <td>
+                        {member.birthDate
+                          ? new Date(member.birthDate).toLocaleDateString("ko-KR")
+                          : "-"}
+                      </td>
+                      <td>{getAge(member.birthDate) ?? "-"}</td>
+                      <td>{member.gender || "-"}</td>
+                      <td>{member.parentPhone || "-"}</td>
+                      <td>{member.phone}</td>
+                      <td>
+                        {new Date(member.createdAt).toLocaleDateString("ko-KR")}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-label${
+                            statusInfo.isDeleted ? " is-deleted" : ""
+                          }`}
+                        >
+                          {statusInfo.isDeleted && (
+                            <span aria-hidden="true">⛔</span>
+                          )}
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -227,9 +267,9 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <button
                   className="button-danger"
                   type="button"
-                  onClick={() => setPendingDeleteId(selectedMember.id)}
+                  onClick={handleStopClick}
                 >
-                  삭제
+                  중지
                 </button>
               </div>
             </div>
@@ -272,6 +312,23 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
                 </strong>
               </div>
+              <div className="detail-item">
+                <span className="detail-label">상태</span>
+                <strong>
+                  {selectedMemberStatus && (
+                    <span
+                      className={`status-label${
+                        selectedMemberStatus.isDeleted ? " is-deleted" : ""
+                      }`}
+                    >
+                      {selectedMemberStatus.isDeleted && (
+                        <span aria-hidden="true">⛔</span>
+                      )}
+                      {selectedMemberStatus.label}
+                    </span>
+                  )}
+                </strong>
+              </div>
             </div>
             <div className="detail-memo">
               <span className="detail-label">메모</span>
@@ -285,7 +342,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
             <p className="confirm-message">
-              선택한 회원을 삭제할까요? 삭제 후에는 복구할 수 없습니다.
+              선택한 회원을 중지할까요? 중지 후에는 복구할 수 없습니다.
             </p>
             <div className="panel-actions center">
               <button
@@ -295,12 +352,32 @@ const MemberPage = ({ members }: MemberPageProps) => {
               >
                 취소
               </button>
-              <form action={deleteMember}>
+              <form
+                action={deleteMember}
+                onSubmit={() => setPendingDeleteId(null)}
+              >
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
-                  삭제하기
+                  중지하기
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAlreadyStoppedOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">이미 중지된 회원입니다.</p>
+            <div className="panel-actions center">
+              <button
+                className="button-primary"
+                type="button"
+                onClick={() => setIsAlreadyStoppedOpen(false)}
+              >
+                확인
+              </button>
             </div>
           </div>
         </div>

@@ -223,6 +223,23 @@ section {
   border-bottom: none;
 }
 
+.status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-label.is-deleted {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

@@ -56,8 +56,11 @@ export const deleteMember = async (formData: FormData) => {
     return;
   }
 
-  await prisma.member.delete({
+  await prisma.member.update({
     where: { id },
+    data: {
+      status: "DELETE",
+    },
   });
 
   revalidatePath("/");

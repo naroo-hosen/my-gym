@@ -15,5 +15,6 @@ model Member {
   gender      String?
   parentPhone String?
   memo        String?
+  status      String   @default("ACTIVE")
   createdAt   DateTime @default(now())
 }

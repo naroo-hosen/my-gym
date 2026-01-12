@@ -12,6 +12,7 @@ type Member = {
   gender: string | null;
   parentPhone: string | null;
   memo: string | null;
+  status: string;
   createdAt: string;
 };
 
@@ -34,6 +35,13 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
+const getStatusLabel = (status: string) => {
+  if (status === "DELETE") {
+    return { label: "삭제", isDeleted: true };
+  }
+  return { label: "정상", isDeleted: false };
+};
+
 const MemberPage = ({ members }: MemberPageProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
@@ -46,6 +54,9 @@ const MemberPage = ({ members }: MemberPageProps) => {
     [members, selectedMemberId],
   );
   const selectedMemberNumber = selectedMember?.id ?? null;
+  const selectedMemberStatus = selectedMember
+    ? getStatusLabel(selectedMember.status)
+    : null;
   const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -176,37 +187,53 @@ const MemberPage = ({ members }: MemberPageProps) => {
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
                   <th>등록일</th>
+                  <th>상태</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedMembers.map((member) => (
-                  <tr
-                    key={member.id}
-                    className={
-                      selectedMemberId === member.id ? "row active" : "row"
-                    }
-                    onClick={() =>
-                      setSelectedMemberId((prev) =>
-                        prev === member.id ? null : member.id,
-                      )
-                    }
-                  >
-                    <td className="number">{member.id}</td>
-                    <td>{member.name}</td>
-                    <td>
-                      {member.birthDate
-                        ? new Date(member.birthDate).toLocaleDateString("ko-KR")
-                        : "-"}
-                    </td>
-                    <td>{getAge(member.birthDate) ?? "-"}</td>
-                    <td>{member.gender || "-"}</td>
-                    <td>{member.parentPhone || "-"}</td>
-                    <td>{member.phone}</td>
-                    <td>
-                      {new Date(member.createdAt).toLocaleDateString("ko-KR")}
-                    </td>
-                  </tr>
-                ))}
+                {pagedMembers.map((member) => {
+                  const statusInfo = getStatusLabel(member.status);
+                  return (
+                    <tr
+                      key={member.id}
+                      className={
+                        selectedMemberId === member.id ? "row active" : "row"
+                      }
+                      onClick={() =>
+                        setSelectedMemberId((prev) =>
+                          prev === member.id ? null : member.id,
+                        )
+                      }
+                    >
+                      <td className="number">{member.id}</td>
+                      <td>{member.name}</td>
+                      <td>
+                        {member.birthDate
+                          ? new Date(member.birthDate).toLocaleDateString("ko-KR")
+                          : "-"}
+                      </td>
+                      <td>{getAge(member.birthDate) ?? "-"}</td>
+                      <td>{member.gender || "-"}</td>
+                      <td>{member.parentPhone || "-"}</td>
+                      <td>{member.phone}</td>
+                      <td>
+                        {new Date(member.createdAt).toLocaleDateString("ko-KR")}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-label${
+                            statusInfo.isDeleted ? " is-deleted" : ""
+                          }`}
+                        >
+                          {statusInfo.isDeleted && (
+                            <span aria-hidden="true">🗑️</span>
+                          )}
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -270,6 +297,23 @@ const MemberPage = ({ members }: MemberPageProps) => {
                 <span className="detail-label">등록일</span>
                 <strong>
                   {new Date(selectedMember.createdAt).toLocaleDateString("ko-KR")}
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">상태</span>
+                <strong>
+                  {selectedMemberStatus && (
+                    <span
+                      className={`status-label${
+                        selectedMemberStatus.isDeleted ? " is-deleted" : ""
+                      }`}
+                    >
+                      {selectedMemberStatus.isDeleted && (
+                        <span aria-hidden="true">🗑️</span>
+                      )}
+                      {selectedMemberStatus.label}
+                    </span>
+                  )}
                 </strong>
               </div>
             </div>

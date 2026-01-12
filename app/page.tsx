@@ -17,6 +17,7 @@ const HomePage = async () => {
     gender: member.gender,
     parentPhone: member.parentPhone,
     memo: member.memo,
+    status: member.status,
     createdAt: member.createdAt.toISOString(),
   }));
 

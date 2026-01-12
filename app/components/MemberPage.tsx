@@ -64,8 +64,27 @@ const MemberPage = ({ members }: MemberPageProps) => {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const countLabel = useMemo(() => `총 ${members.length}명`, [members.length]);
+  const filteredMembers = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return members;
+    return members.filter((member) => {
+      const name = member.name.toLowerCase();
+      const phone = member.phone.replace(/[^0-9]/g, "");
+      const normalizedKeyword = keyword.replace(/[^0-9a-z]/g, "");
+      return (
+        name.includes(keyword) ||
+        phone.includes(normalizedKeyword) ||
+        member.phone.toLowerCase().includes(keyword)
+      );
+    });
+  }, [members, searchTerm]);
+
+  const countLabel = useMemo(
+    () => `총 ${filteredMembers.length}명`,
+    [filteredMembers.length],
+  );
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
@@ -86,19 +105,36 @@ const MemberPage = ({ members }: MemberPageProps) => {
 
     setPendingDeleteId(selectedMember.id);
   };
-  const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const filteredTotalPages = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / PAGE_SIZE),
+  );
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return members.slice(start, start + PAGE_SIZE);
-  }, [members, page]);
+    return filteredMembers.slice(start, start + PAGE_SIZE);
+  }, [filteredMembers, page]);
   const handlePageChange = (nextPage: number) => {
-    const safePage = Math.min(Math.max(nextPage, 1), totalPages);
+    const safePage = Math.min(Math.max(nextPage, 1), filteredTotalPages);
     setPage(safePage);
   };
 
   useEffect(() => {
     setEditingField(null);
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    const exists = filteredMembers.some(
+      (member) => member.id === selectedMemberId,
+    );
+    if (!exists) {
+      setSelectedMemberId(null);
+    }
+  }, [filteredMembers, selectedMemberId]);
 
   const startEdit = (field: EditableField) => {
     setEditingField(field);
@@ -191,30 +227,44 @@ const MemberPage = ({ members }: MemberPageProps) => {
       <section className="panel list-panel">
         <div className="panel-header">
           <h2>회원 목록</h2>
-          <div className="pagination">
-            <button
-              className="button-ghost"
-              type="button"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-            >
-              이전
-            </button>
-            <span className="pagination-status">
-              {page} / {totalPages}
-            </span>
-            <button
-              className="button-ghost"
-              type="button"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages}
-            >
-              다음
-            </button>
+          <div className="list-panel-actions">
+            <div className="search-bar">
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="이름 또는 전화번호로 검색"
+                aria-label="이름 또는 전화번호로 검색"
+              />
+            </div>
+            <div className="pagination">
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+              >
+                이전
+              </button>
+              <span className="pagination-status">
+                {page} / {filteredTotalPages}
+              </span>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === filteredTotalPages}
+              >
+                다음
+              </button>
+            </div>
           </div>
         </div>
-        {members.length === 0 ? (
-          <p className="empty">아직 등록된 회원이 없어요.</p>
+        {filteredMembers.length === 0 ? (
+          <p className="empty">
+            {searchTerm.trim()
+              ? "검색 결과가 없습니다."
+              : "아직 등록된 회원이 없어요."}
+          </p>
         ) : (
           <div className="table-wrap">
             <table className="member-table">

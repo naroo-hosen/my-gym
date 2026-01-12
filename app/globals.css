@@ -272,6 +272,21 @@ section {
   gap: 8px;
 }
 
+.list-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.search-bar {
+  min-width: 220px;
+}
+
+.search-bar input {
+  width: 100%;
+}
+
 .pagination-status {
   font-size: 12px;
   color: #6b7280;

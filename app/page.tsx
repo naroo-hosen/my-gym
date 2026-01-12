@@ -19,7 +19,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ? {
           [searchField]: {
             contains: searchTerm,
-            mode: "insensitive",
           },
         }
       : undefined,

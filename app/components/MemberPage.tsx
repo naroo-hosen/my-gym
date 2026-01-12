@@ -52,6 +52,13 @@ type MemberPageProps = {
 type MembershipFilter = "all" | "with" | "without";
 type MembershipFilterOption = "with" | "without";
 type StatusFilter = "ACTIVE" | "DELETE" | "PAUSED";
+type SortKey =
+  | "id"
+  | "name"
+  | "birthDate"
+  | "age"
+  | "createdAt"
+  | "expiresAt";
 
 const PAGE_SIZE = 8;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
@@ -179,6 +186,10 @@ const MemberPage = ({
   const [statusSelections, setStatusSelections] =
     useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({ key: null, direction: "asc" });
   const membershipOptions = useMemo(
     () =>
       memberships
@@ -283,10 +294,56 @@ const MemberPage = ({
     setPendingPauseMemberId(selectedMember.id);
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const sortedMembers = useMemo(() => {
+    if (!sortConfig.key) {
+      return members;
+    }
+    const sorted = [...members];
+    const directionFactor = sortConfig.direction === "asc" ? 1 : -1;
+    sorted.sort((a, b) => {
+      const getSortValue = (member: Member) => {
+        switch (sortConfig.key) {
+          case "id":
+            return member.id;
+          case "name":
+            return member.name;
+          case "birthDate":
+            return member.birthDate ? new Date(member.birthDate).getTime() : null;
+          case "age":
+            return getAge(member.birthDate);
+          case "createdAt":
+            return new Date(member.createdAt).getTime();
+          case "expiresAt": {
+            const expiryDate = resolveExpiryDate(
+              member.membershipExpiresAt,
+              member.membershipAssignedAt,
+              member.membershipDuration,
+            );
+            return expiryDate ? expiryDate.getTime() : null;
+          }
+          default:
+            return null;
+        }
+      };
+
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+
+      if (aValue === null && bValue === null) return 0;
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return aValue.localeCompare(bValue) * directionFactor;
+      }
+      return (Number(aValue) - Number(bValue)) * directionFactor;
+    });
+    return sorted;
+  }, [members, sortConfig]);
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return members.slice(start, start + PAGE_SIZE);
-  }, [members, page]);
+    return sortedMembers.slice(start, start + PAGE_SIZE);
+  }, [page, sortedMembers]);
   const handlePageChange = (nextPage: number) => {
     const safePage = Math.min(Math.max(nextPage, 1), filteredTotalPages);
     setPage(safePage);
@@ -322,7 +379,13 @@ const MemberPage = ({
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, searchField, membershipFilter, resolvedStatusSelections]);
+  }, [
+    membershipFilter,
+    resolvedStatusSelections,
+    searchField,
+    searchTerm,
+    sortConfig,
+  ]);
 
   useEffect(() => {
     if (!selectedMemberId) return;
@@ -336,6 +399,50 @@ const MemberPage = ({
     setDraftSearchTerm(searchTerm);
     setDraftSearchField(searchField);
   }, [searchField, searchTerm]);
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const renderSortableHeader = (
+    label: string,
+    key: SortKey,
+    className?: string,
+  ) => {
+    const isActive = sortConfig.key === key;
+    const indicator = isActive
+      ? sortConfig.direction === "asc"
+        ? "▲"
+        : "▼"
+      : "↕";
+    const ariaSort = isActive
+      ? sortConfig.direction === "asc"
+        ? "ascending"
+        : "descending"
+      : "none";
+    return (
+      <th className={className} aria-sort={ariaSort}>
+        <button
+          className={`sort-button${isActive ? " is-active" : ""}`}
+          type="button"
+          onClick={() => handleSort(key)}
+        >
+          <span>{label}</span>
+          <span className="sort-indicator" aria-hidden="true">
+            {indicator}
+          </span>
+        </button>
+      </th>
+    );
+  };
 
   const buildQueryParams = (
     term: string,
@@ -684,16 +791,16 @@ const MemberPage = ({
             <table className="member-table">
               <thead>
                 <tr>
-                  <th className="number">회원번호</th>
-                  <th>이름</th>
-                  <th>생년월일</th>
-                  <th>나이</th>
+                  {renderSortableHeader("회원번호", "id", "number")}
+                  {renderSortableHeader("이름", "name")}
+                  {renderSortableHeader("생년월일", "birthDate")}
+                  {renderSortableHeader("나이", "age")}
                   <th>성별</th>
                   <th>부모님 연락처</th>
                   <th>전화번호</th>
-                  <th>등록일</th>
+                  {renderSortableHeader("등록일", "createdAt")}
                   <th>상태</th>
-                  <th>만료일</th>
+                  {renderSortableHeader("만료일", "expiresAt")}
                   <th>남은 기간</th>
                 </tr>
               </thead>

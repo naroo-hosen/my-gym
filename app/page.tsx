@@ -46,6 +46,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     parentPhone: member.parentPhone,
     memo: member.memo,
     status: member.status,
+    membershipId: member.membershipId,
     createdAt: member.createdAt.toISOString(),
   }));
   const serializedMemberships = memberships.map((membership) => ({
@@ -66,6 +67,9 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : (
         <MemberPage
           members={serializedMembers}
+          memberships={serializedMemberships.filter(
+            (membership) => membership.status !== "DELETE",
+          )}
           searchTerm={searchTerm}
           searchField={searchField}
           section={section}

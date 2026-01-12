@@ -8,15 +8,17 @@ datasource db {
 }
 
 model Member {
-  id          Int      @id @default(autoincrement())
-  name        String
-  phone       String
-  birthDate   DateTime?
-  gender      String?
-  parentPhone String?
-  memo        String?
-  status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now())
+  id           Int         @id @default(autoincrement())
+  name         String
+  phone        String
+  birthDate    DateTime?
+  gender       String?
+  parentPhone  String?
+  memo         String?
+  status       String      @default("ACTIVE")
+  membershipId Int?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+  createdAt    DateTime    @default(now())
 }
 
 model Membership {
@@ -26,4 +28,5 @@ model Membership {
   price            Int
   status           String   @default("ACTIVE")
   createdAt        DateTime @default(now())
+  members          Member[]
 }

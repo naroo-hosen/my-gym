@@ -19,11 +19,22 @@ type Member = {
   parentPhone: string | null;
   memo: string | null;
   status: string;
+  membershipId: number | null;
+  createdAt: string;
+};
+
+type Membership = {
+  id: number;
+  duration: number;
+  weeklyAttendance: number;
+  price: number;
+  status: string;
   createdAt: string;
 };
 
 type MemberPageProps = {
   members: Member[];
+  memberships: Membership[];
   searchTerm: string;
   searchField: "name" | "phone";
   section: "member" | "membership";
@@ -64,10 +75,12 @@ type EditableField =
   | "birthDate"
   | "gender"
   | "parentPhone"
-  | "memo";
+  | "memo"
+  | "membershipId";
 
 const MemberPage = ({
   members,
+  memberships,
   searchTerm,
   searchField,
   section,
@@ -82,6 +95,14 @@ const MemberPage = ({
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
+  const membershipOptions = useMemo(
+    () =>
+      memberships.map((membership) => ({
+        id: membership.id,
+        label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
+      })),
+    [memberships],
+  );
 
   const countLabel = useMemo(
     () => `총 ${members.length}명`,
@@ -95,6 +116,26 @@ const MemberPage = ({
   const selectedMemberStatus = selectedMember
     ? getStatusLabel(selectedMember.status)
     : null;
+  const selectedMembershipValue = useMemo(() => {
+    if (!selectedMember?.membershipId) {
+      return "none";
+    }
+    const hasActiveMembership = membershipOptions.some(
+      (membership) => membership.id === selectedMember.membershipId,
+    );
+    return hasActiveMembership
+      ? String(selectedMember.membershipId)
+      : "none";
+  }, [membershipOptions, selectedMember?.membershipId]);
+  const selectedMembershipLabel = useMemo(() => {
+    if (!selectedMember?.membershipId) {
+      return "-";
+    }
+    const option = membershipOptions.find(
+      (membership) => membership.id === selectedMember.membershipId,
+    );
+    return option?.label ?? "중지된 회원권";
+  }, [membershipOptions, selectedMember?.membershipId]);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -655,6 +696,53 @@ const MemberPage = ({
                     </span>
                   )}
                 </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">회원권</span>
+                {editingField === "membershipId" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <select
+                      name="membershipId"
+                      defaultValue={selectedMembershipValue}
+                    >
+                      <option value="none">선택 안 함</option>
+                      {membershipOptions.map((membership) => (
+                        <option key={membership.id} value={membership.id}>
+                          {membership.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMembershipLabel}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("membershipId")}
+                      aria-label="회원권 변경"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="detail-memo">

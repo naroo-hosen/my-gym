@@ -37,6 +37,7 @@ export const updateMember = async (formData: FormData) => {
   const rawGender = formData.get("gender");
   const rawParentPhone = formData.get("parentPhone");
   const rawMemo = formData.get("memo");
+  const rawMembershipId = formData.get("membershipId");
 
   if (!id) {
     return;
@@ -49,6 +50,7 @@ export const updateMember = async (formData: FormData) => {
     gender?: string | null;
     parentPhone?: string | null;
     memo?: string | null;
+    membershipId?: number | null;
   } = {};
 
   if (rawName !== null) {
@@ -85,6 +87,18 @@ export const updateMember = async (formData: FormData) => {
   if (rawMemo !== null) {
     const memoValue = rawMemo.toString().trim();
     data.memo = memoValue ? memoValue : null;
+  }
+
+  if (rawMembershipId !== null) {
+    const membershipValue = rawMembershipId.toString().trim();
+    if (!membershipValue || membershipValue === "none") {
+      data.membershipId = null;
+    } else {
+      const membershipId = Number(membershipValue);
+      if (membershipId) {
+        data.membershipId = membershipId;
+      }
+    }
   }
 
   if (Object.keys(data).length === 0) {

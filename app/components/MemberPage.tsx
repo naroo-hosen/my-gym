@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   createMember,
   deleteMember,
+  pauseMemberMembership,
   restoreMember,
+  resumeMemberMembership,
   updateMember,
 } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
@@ -22,6 +24,8 @@ type Member = {
   membershipId: number | null;
   membershipAssignedAt: string | null;
   membershipDuration: number | null;
+  membershipPausedAt: string | null;
+  membershipTotalPausedMs: number;
   createdAt: string;
 };
 
@@ -57,11 +61,14 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
-const getStatusLabel = (status: string) => {
+const getStatusLabel = (status: string, isPaused: boolean) => {
   if (status === "DELETE") {
-    return { label: "중지", isDeleted: true };
+    return { label: "중지", isDeleted: true, isPaused: false, icon: "⛔" };
   }
-  return { label: "정상", isDeleted: false };
+  if (isPaused) {
+    return { label: "일시정지", isDeleted: false, isPaused: true, icon: "⏸️" };
+  }
+  return { label: "정상", isDeleted: false, isPaused: false, icon: null };
 };
 
 const formatDateInput = (birthDate: string | null) => {
@@ -74,6 +81,8 @@ const formatDateInput = (birthDate: string | null) => {
 const getRemainingDays = (
   assignedAt: string | null,
   durationMonths: number | null,
+  totalPausedMs: number,
+  pausedAt: string | null,
 ) => {
   if (!assignedAt || !durationMonths) {
     return null;
@@ -84,7 +93,12 @@ const getRemainingDays = (
   }
   const expiryDate = new Date(startDate);
   expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
-  const diffMs = expiryDate.getTime() - Date.now();
+  expiryDate.setTime(expiryDate.getTime() + totalPausedMs);
+  const effectiveNow = pausedAt ? new Date(pausedAt) : new Date();
+  if (Number.isNaN(effectiveNow.getTime())) {
+    return null;
+  }
+  const diffMs = expiryDate.getTime() - effectiveNow.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 };
@@ -112,6 +126,9 @@ const MemberPage = ({
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
+  const [pendingPauseMemberId, setPendingPauseMemberId] = useState<
+    number | null
+  >(null);
   const [pendingMembershipAction, setPendingMembershipAction] = useState<{
     type: "assign" | "clear";
     membershipId: string;
@@ -137,17 +154,34 @@ const MemberPage = ({
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
+  const pendingPauseMember = useMemo(
+    () =>
+      pendingPauseMemberId
+        ? members.find((member) => member.id === pendingPauseMemberId) ?? null
+        : null,
+    [members, pendingPauseMemberId],
+  );
   const selectedMemberNumber = selectedMember?.id ?? null;
   const selectedMemberStatus = selectedMember
-    ? getStatusLabel(selectedMember.status)
+    ? getStatusLabel(
+        selectedMember.status,
+        Boolean(selectedMember.membershipPausedAt),
+      )
     : null;
   const selectedMembershipRemainingDays = useMemo(
     () =>
       getRemainingDays(
         selectedMember?.membershipAssignedAt ?? null,
         selectedMember?.membershipDuration ?? null,
+        selectedMember?.membershipTotalPausedMs ?? 0,
+        selectedMember?.membershipPausedAt ?? null,
       ),
-    [selectedMember?.membershipAssignedAt, selectedMember?.membershipDuration],
+    [
+      selectedMember?.membershipAssignedAt,
+      selectedMember?.membershipDuration,
+      selectedMember?.membershipPausedAt,
+      selectedMember?.membershipTotalPausedMs,
+    ],
   );
   const selectedMembershipValue = useMemo(() => {
     if (!selectedMember?.membershipId) {
@@ -169,6 +203,10 @@ const MemberPage = ({
     );
     return option?.label ?? "중지된 회원권";
   }, [membershipOptions, selectedMember?.membershipId]);
+  const canPauseMembership = Boolean(
+    selectedMember?.membershipId && selectedMember?.status !== "DELETE",
+  );
+  const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -179,6 +217,13 @@ const MemberPage = ({
     } else {
       setPendingDeleteId(selectedMember.id);
     }
+  };
+  const handlePauseClick = () => {
+    if (!selectedMember) {
+      return;
+    }
+
+    setPendingPauseMemberId(selectedMember.id);
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
@@ -438,10 +483,15 @@ const MemberPage = ({
               </thead>
               <tbody>
                 {pagedMembers.map((member) => {
-                  const statusInfo = getStatusLabel(member.status);
+                  const statusInfo = getStatusLabel(
+                    member.status,
+                    Boolean(member.membershipPausedAt),
+                  );
                   const remainingDays = getRemainingDays(
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipTotalPausedMs,
+                    member.membershipPausedAt,
                   );
                   return (
                     <tr
@@ -472,11 +522,15 @@ const MemberPage = ({
                       <td>
                         <span
                           className={`status-label${
-                            statusInfo.isDeleted ? " is-deleted" : ""
+                            statusInfo.isDeleted
+                              ? " is-deleted"
+                              : statusInfo.isPaused
+                                ? " is-paused"
+                                : ""
                           }`}
                         >
-                          {statusInfo.isDeleted && (
-                            <span aria-hidden="true">⛔</span>
+                          {statusInfo.icon && (
+                            <span aria-hidden="true">{statusInfo.icon}</span>
                           )}
                           {statusInfo.label}
                         </span>
@@ -499,6 +553,15 @@ const MemberPage = ({
             <div className="panel-header">
               <h2>회원 상세</h2>
               <div className="panel-actions">
+                {canPauseMembership && (
+                  <button
+                    className="button-secondary"
+                    type="button"
+                    onClick={handlePauseClick}
+                  >
+                    {isMembershipPaused ? "일시정지 해제" : "일시정지"}
+                  </button>
+                )}
                 <button
                   className={
                     selectedMember.status === "DELETE"
@@ -749,11 +812,17 @@ const MemberPage = ({
                   {selectedMemberStatus && (
                     <span
                       className={`status-label${
-                        selectedMemberStatus.isDeleted ? " is-deleted" : ""
+                        selectedMemberStatus.isDeleted
+                          ? " is-deleted"
+                          : selectedMemberStatus.isPaused
+                            ? " is-paused"
+                            : ""
                       }`}
                     >
-                      {selectedMemberStatus.isDeleted && (
-                        <span aria-hidden="true">⛔</span>
+                      {selectedMemberStatus.icon && (
+                        <span aria-hidden="true">
+                          {selectedMemberStatus.icon}
+                        </span>
                       )}
                       {selectedMemberStatus.label}
                     </span>
@@ -890,6 +959,44 @@ const MemberPage = ({
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
                   중지하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPauseMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              {pendingPauseMember.membershipPausedAt
+                ? "일시정지를 해제할까요? 해제하면 오늘부터 다시 차감됩니다."
+                : "회원권을 일시정지할까요? 일시정지 동안 남은 기간이 유지됩니다."}
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingPauseMemberId(null)}
+              >
+                취소
+              </button>
+              <form
+                action={
+                  pendingPauseMember.membershipPausedAt
+                    ? resumeMemberMembership
+                    : pauseMemberMembership
+                }
+                onSubmit={() => setPendingPauseMemberId(null)}
+              >
+                <input
+                  type="hidden"
+                  name="memberId"
+                  value={pendingPauseMember.id}
+                />
+                <button className="button-primary" type="submit">
+                  확인
                 </button>
               </form>
             </div>

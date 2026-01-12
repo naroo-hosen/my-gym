@@ -240,6 +240,11 @@ section {
   color: #b91c1c;
 }
 
+.status-label.is-paused {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

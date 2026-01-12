@@ -58,9 +58,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     memo: member.memo,
     status: member.status,
     membershipId: member.memberMemberships[0]?.membershipId ?? null,
-    membershipAssignedAt: member.memberMemberships[0]?.assignedAt.toISOString() ?? null,
+    membershipAssignedAt:
+      member.memberMemberships[0]?.assignedAt.toISOString() ?? null,
     membershipDuration:
       member.memberMemberships[0]?.membership?.duration ?? null,
+    membershipPausedAt:
+      member.memberMemberships[0]?.pausedAt?.toISOString() ?? null,
+    membershipTotalPausedMs: member.memberMemberships[0]?.totalPausedMs ?? 0,
     createdAt: member.createdAt.toISOString(),
   }));
   const serializedMemberships = memberships.map((membership) => ({

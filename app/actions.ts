@@ -140,10 +140,16 @@ export const updateMember = async (formData: FormData) => {
     if (membershipSelection?.type === "assign") {
       await transaction.memberMembership.upsert({
         where: { memberId: id },
-        update: { membershipId: membershipSelection.membershipId },
+        update: {
+          membershipId: membershipSelection.membershipId,
+          assignedAt: new Date(),
+          pausedAt: null,
+          totalPausedMs: 0,
+        },
         create: {
           memberId: id,
           membershipId: membershipSelection.membershipId,
+          assignedAt: new Date(),
         },
       });
     }
@@ -180,6 +186,60 @@ export const restoreMember = async (formData: FormData) => {
     where: { id },
     data: {
       status: "ACTIVE",
+    },
+  });
+
+  revalidatePath("/");
+};
+
+export const pauseMemberMembership = async (formData: FormData) => {
+  const memberId = Number(formData.get("memberId"));
+
+  if (!memberId) {
+    return;
+  }
+
+  const memberMembership = await prisma.memberMembership.findUnique({
+    where: { memberId },
+    select: { pausedAt: true },
+  });
+
+  if (!memberMembership || memberMembership.pausedAt) {
+    return;
+  }
+
+  await prisma.memberMembership.update({
+    where: { memberId },
+    data: { pausedAt: new Date() },
+  });
+
+  revalidatePath("/");
+};
+
+export const resumeMemberMembership = async (formData: FormData) => {
+  const memberId = Number(formData.get("memberId"));
+
+  if (!memberId) {
+    return;
+  }
+
+  const memberMembership = await prisma.memberMembership.findUnique({
+    where: { memberId },
+    select: { pausedAt: true, totalPausedMs: true },
+  });
+
+  if (!memberMembership?.pausedAt) {
+    return;
+  }
+
+  const pauseDurationMs =
+    Date.now() - memberMembership.pausedAt.getTime();
+
+  await prisma.memberMembership.update({
+    where: { memberId },
+    data: {
+      pausedAt: null,
+      totalPausedMs: memberMembership.totalPausedMs + pauseDurationMs,
     },
   });
 

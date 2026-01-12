@@ -232,7 +232,15 @@ export const resumeMemberMembership = async (formData: FormData) => {
 
   const memberMembership = await prisma.memberMembership.findUnique({
     where: { memberId },
-    select: { pausedAt: true, totalPausedMs: true },
+    select: {
+      pausedAt: true,
+      totalPausedMs: true,
+      expiresAt: true,
+      assignedAt: true,
+      membership: {
+        select: { duration: true },
+      },
+    },
   });
 
   if (!memberMembership?.pausedAt) {
@@ -241,12 +249,32 @@ export const resumeMemberMembership = async (formData: FormData) => {
 
   const pauseDurationMs =
     Date.now() - memberMembership.pausedAt.getTime();
+  const baseExpiry =
+    memberMembership.expiresAt ??
+    (memberMembership.membership?.duration
+      ? new Date(
+          new Date(memberMembership.assignedAt).setMonth(
+            memberMembership.assignedAt.getMonth() +
+              memberMembership.membership.duration,
+          ),
+        )
+      : null);
+  const nextExpiresAt = baseExpiry
+    ? new Date(
+        baseExpiry.getTime() +
+          memberMembership.totalPausedMs +
+          pauseDurationMs,
+      )
+    : null;
 
   await prisma.memberMembership.update({
     where: { memberId },
     data: {
       pausedAt: null,
-      totalPausedMs: memberMembership.totalPausedMs + pauseDurationMs,
+      totalPausedMs: nextExpiresAt
+        ? 0
+        : memberMembership.totalPausedMs + pauseDurationMs,
+      ...(nextExpiresAt ? { expiresAt: nextExpiresAt } : {}),
     },
   });
 

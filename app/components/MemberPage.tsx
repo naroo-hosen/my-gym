@@ -101,10 +101,16 @@ const resolveExpiryDate = (
   expiresAt: string | null,
   assignedAt: string | null,
   durationMonths: number | null,
+  totalPausedMs: number,
 ) => {
   if (expiresAt) {
     const parsed = new Date(expiresAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    const adjusted = new Date(parsed);
+    adjusted.setTime(parsed.getTime() + totalPausedMs);
+    return adjusted;
   }
   if (!assignedAt || !durationMonths) {
     return null;
@@ -115,6 +121,7 @@ const resolveExpiryDate = (
   }
   const derivedExpiry = new Date(startDate);
   derivedExpiry.setMonth(derivedExpiry.getMonth() + durationMonths);
+  derivedExpiry.setTime(derivedExpiry.getTime() + totalPausedMs);
   return derivedExpiry;
 };
 
@@ -129,17 +136,16 @@ const getRemainingDays = (
     expiresAt,
     assignedAt,
     durationMonths,
+    totalPausedMs,
   );
   if (!baseExpiryDate) {
     return null;
   }
-  const expiryDate = new Date(baseExpiryDate);
-  expiryDate.setTime(baseExpiryDate.getTime() + totalPausedMs);
   const effectiveNow = pausedAt ? new Date(pausedAt) : new Date();
   if (Number.isNaN(effectiveNow.getTime())) {
     return null;
   }
-  const diffMs = expiryDate.getTime() - effectiveNow.getTime();
+  const diffMs = baseExpiryDate.getTime() - effectiveNow.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 };
@@ -318,6 +324,7 @@ const MemberPage = ({
               member.membershipExpiresAt,
               member.membershipAssignedAt,
               member.membershipDuration,
+              member.membershipTotalPausedMs,
             );
             return expiryDate ? expiryDate.getTime() : null;
           }
@@ -814,10 +821,12 @@ const MemberPage = ({
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipTotalPausedMs,
                   );
-                  const expiresAtLabel = resolvedExpiryDate
-                    ? resolvedExpiryDate.toLocaleDateString("ko-KR")
-                    : "-";
+                  const expiresAtLabel =
+                    member.membershipPausedAt || !resolvedExpiryDate
+                      ? "-"
+                      : resolvedExpiryDate.toLocaleDateString("ko-KR");
                   const remainingDays = getRemainingDays(
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
@@ -1225,11 +1234,14 @@ const MemberPage = ({
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">만료일</span>
                 <strong>
-                  {resolveExpiryDate(
-                    selectedMember.membershipExpiresAt,
-                    selectedMember.membershipAssignedAt,
-                    selectedMember.membershipDuration,
-                  )?.toLocaleDateString("ko-KR") ?? "-"}
+                  {selectedMember.membershipPausedAt
+                    ? "-"
+                    : resolveExpiryDate(
+                        selectedMember.membershipExpiresAt,
+                        selectedMember.membershipAssignedAt,
+                        selectedMember.membershipDuration,
+                        selectedMember.membershipTotalPausedMs,
+                      )?.toLocaleDateString("ko-KR") ?? "-"}
                 </strong>
               </div>
               <div className="detail-item detail-item--wide">

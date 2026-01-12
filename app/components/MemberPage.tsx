@@ -50,12 +50,13 @@ type MemberPageProps = {
 
 type MembershipFilter = "all" | "with" | "without";
 type MembershipFilterOption = "with" | "without";
-type StatusFilter = "ACTIVE" | "DELETE";
+type StatusFilter = "ACTIVE" | "DELETE" | "PAUSED";
 
 const PAGE_SIZE = 8;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "ACTIVE", label: "정상" },
   { value: "DELETE", label: "중지" },
+  { value: "PAUSED", label: "일시정지" },
 ];
 
 const getAge = (birthDate: string | null) => {

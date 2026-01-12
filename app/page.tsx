@@ -27,7 +27,39 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const statusFilters = statusFilterParam
     .split(",")
     .map((value) => value.trim())
-    .filter((value) => value === "ACTIVE" || value === "DELETE");
+    .filter(
+      (value) => value === "ACTIVE" || value === "DELETE" || value === "PAUSED",
+    );
+
+  const statusConditions = statusFilters.length
+    ? statusFilters.map((status) => {
+        if (status === "DELETE") {
+          return { status: "DELETE" as const };
+        }
+        if (status === "PAUSED") {
+          return {
+            status: "ACTIVE" as const,
+            memberMemberships: {
+              some: {
+                pausedAt: {
+                  not: null,
+                },
+              },
+            },
+          };
+        }
+        return {
+          status: "ACTIVE" as const,
+          memberMemberships: {
+            none: {
+              pausedAt: {
+                not: null,
+              },
+            },
+          },
+        };
+      })
+    : [];
 
   const [members, memberships] = await Promise.all([
     prisma.member.findMany({
@@ -39,7 +71,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               },
             }
           : {}),
-        ...(statusFilters.length > 0 ? { status: { in: statusFilters } } : {}),
+        ...(statusConditions.length > 0 ? { OR: statusConditions } : {}),
         ...(membershipFilter === "with"
           ? { memberMemberships: { some: {} } }
           : membershipFilter === "without"

@@ -241,13 +241,8 @@ const MemberPage = ({
     if (!selectedMember?.membershipId) {
       return "none";
     }
-    const hasActiveMembership = membershipOptions.some(
-      (membership) => membership.id === selectedMember.membershipId,
-    );
-    return hasActiveMembership
-      ? String(selectedMember.membershipId)
-      : "none";
-  }, [membershipOptions, selectedMember?.membershipId]);
+    return String(selectedMember.membershipId);
+  }, [selectedMember?.membershipId]);
   const selectedMembershipLabel = useMemo(() => {
     if (!selectedMember?.membershipId) {
       return "-";
@@ -257,6 +252,14 @@ const MemberPage = ({
     );
     return option?.label ?? "중지된 회원권";
   }, [membershipLabelOptions, selectedMember?.membershipId]);
+  const isSelectedMembershipInactive = useMemo(() => {
+    if (!selectedMember?.membershipId) {
+      return false;
+    }
+    return !membershipOptions.some(
+      (membership) => membership.id === selectedMember.membershipId,
+    );
+  }, [membershipOptions, selectedMember?.membershipId]);
   const canPauseMembership = Boolean(
     selectedMember?.membershipId && selectedMember?.status !== "DELETE",
   );
@@ -1070,6 +1073,11 @@ const MemberPage = ({
                       }
                     >
                       <option value="none">선택 안 함</option>
+                      {isSelectedMembershipInactive && selectedMember ? (
+                        <option value={selectedMember.membershipId} disabled>
+                          {selectedMembershipLabel}
+                        </option>
+                      ) : null}
                       {membershipOptions.map((membership) => (
                         <option key={membership.id} value={membership.id}>
                           {membership.label}

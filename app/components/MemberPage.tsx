@@ -20,6 +20,8 @@ type Member = {
   memo: string | null;
   status: string;
   membershipId: number | null;
+  membershipAssignedAt: string | null;
+  membershipDuration: number | null;
   createdAt: string;
 };
 
@@ -69,6 +71,24 @@ const formatDateInput = (birthDate: string | null) => {
   return date.toISOString().split("T")[0];
 };
 
+const getRemainingDays = (
+  assignedAt: string | null,
+  durationMonths: number | null,
+) => {
+  if (!assignedAt || !durationMonths) {
+    return null;
+  }
+  const startDate = new Date(assignedAt);
+  if (Number.isNaN(startDate.getTime())) {
+    return null;
+  }
+  const expiryDate = new Date(startDate);
+  expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
+  const diffMs = expiryDate.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+};
+
 type EditableField =
   | "name"
   | "phone"
@@ -116,6 +136,14 @@ const MemberPage = ({
   const selectedMemberStatus = selectedMember
     ? getStatusLabel(selectedMember.status)
     : null;
+  const selectedMembershipRemainingDays = useMemo(
+    () =>
+      getRemainingDays(
+        selectedMember?.membershipAssignedAt ?? null,
+        selectedMember?.membershipDuration ?? null,
+      ),
+    [selectedMember?.membershipAssignedAt, selectedMember?.membershipDuration],
+  );
   const selectedMembershipValue = useMemo(() => {
     if (!selectedMember?.membershipId) {
       return "none";
@@ -376,11 +404,16 @@ const MemberPage = ({
                   <th>전화번호</th>
                   <th>등록일</th>
                   <th>상태</th>
+                  <th>남은 기간</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedMembers.map((member) => {
                   const statusInfo = getStatusLabel(member.status);
+                  const remainingDays = getRemainingDays(
+                    member.membershipAssignedAt,
+                    member.membershipDuration,
+                  );
                   return (
                     <tr
                       key={member.id}
@@ -419,6 +452,7 @@ const MemberPage = ({
                           {statusInfo.label}
                         </span>
                       </td>
+                      <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
                     </tr>
                   );
                 })}
@@ -707,6 +741,7 @@ const MemberPage = ({
                   >
                     <input type="hidden" name="id" value={selectedMember.id} />
                     <select
+                      className="membership-select"
                       name="membershipId"
                       defaultValue={selectedMembershipValue}
                     >
@@ -743,6 +778,14 @@ const MemberPage = ({
                     </button>
                   </div>
                 )}
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">남은 기간</span>
+                <strong>
+                  {selectedMembershipRemainingDays !== null
+                    ? `${selectedMembershipRemainingDays}일`
+                    : "-"}
+                </strong>
               </div>
             </div>
             <div className="detail-memo">

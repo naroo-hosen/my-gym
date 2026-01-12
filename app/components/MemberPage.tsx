@@ -37,7 +37,7 @@ const getAge = (birthDate: string | null) => {
 
 const getStatusLabel = (status: string) => {
   if (status === "DELETE") {
-    return { label: "삭제", isDeleted: true };
+    return { label: "중지", isDeleted: true };
   }
   return { label: "정상", isDeleted: false };
 };
@@ -226,7 +226,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                           }`}
                         >
                           {statusInfo.isDeleted && (
-                            <span aria-hidden="true">🗑️</span>
+                            <span aria-hidden="true">⏸</span>
                           )}
                           {statusInfo.label}
                         </span>
@@ -309,7 +309,7 @@ const MemberPage = ({ members }: MemberPageProps) => {
                       }`}
                     >
                       {selectedMemberStatus.isDeleted && (
-                        <span aria-hidden="true">🗑️</span>
+                        <span aria-hidden="true">⏸</span>
                       )}
                       {selectedMemberStatus.label}
                     </span>

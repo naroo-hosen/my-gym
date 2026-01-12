@@ -58,6 +58,7 @@ type SortKey =
   | "birthDate"
   | "age"
   | "createdAt"
+  | "assignedAt"
   | "expiresAt";
 
 const PAGE_SIZE = 8;
@@ -80,14 +81,45 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
-const getStatusLabel = (status: string, isPaused: boolean) => {
+const getStatusLabel = (
+  status: string,
+  isPaused: boolean,
+  hasMembership: boolean,
+) => {
   if (status === "DELETE") {
-    return { label: "중지", isDeleted: true, isPaused: false, icon: "⛔" };
+    return {
+      label: "중지",
+      isDeleted: true,
+      isPaused: false,
+      isMembershipActive: false,
+      icon: "⛔",
+    };
   }
   if (isPaused) {
-    return { label: "일시정지", isDeleted: false, isPaused: true, icon: "⏸️" };
+    return {
+      label: "일시정지",
+      isDeleted: false,
+      isPaused: true,
+      isMembershipActive: false,
+      icon: "⏸️",
+    };
   }
-  return { label: "정상", isDeleted: false, isPaused: false, icon: null };
+  if (hasMembership) {
+    return {
+      label: "회원권 보유",
+      isDeleted: false,
+      isPaused: false,
+      isMembershipActive: true,
+      icon: "✅",
+    };
+  }
+  return {
+    label: "정상",
+    isDeleted: false,
+    isPaused: false,
+    isMembershipActive: false,
+    icon: null,
+  };
 };
 
 const formatDateInput = (birthDate: string | null) => {
@@ -101,10 +133,16 @@ const resolveExpiryDate = (
   expiresAt: string | null,
   assignedAt: string | null,
   durationMonths: number | null,
+  totalPausedMs: number,
 ) => {
   if (expiresAt) {
     const parsed = new Date(expiresAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    const adjusted = new Date(parsed);
+    adjusted.setTime(parsed.getTime() + totalPausedMs);
+    return adjusted;
   }
   if (!assignedAt || !durationMonths) {
     return null;
@@ -115,6 +153,7 @@ const resolveExpiryDate = (
   }
   const derivedExpiry = new Date(startDate);
   derivedExpiry.setMonth(derivedExpiry.getMonth() + durationMonths);
+  derivedExpiry.setTime(derivedExpiry.getTime() + totalPausedMs);
   return derivedExpiry;
 };
 
@@ -129,17 +168,16 @@ const getRemainingDays = (
     expiresAt,
     assignedAt,
     durationMonths,
+    totalPausedMs,
   );
   if (!baseExpiryDate) {
     return null;
   }
-  const expiryDate = new Date(baseExpiryDate);
-  expiryDate.setTime(baseExpiryDate.getTime() + totalPausedMs);
   const effectiveNow = pausedAt ? new Date(pausedAt) : new Date();
   if (Number.isNaN(effectiveNow.getTime())) {
     return null;
   }
-  const diffMs = expiryDate.getTime() - effectiveNow.getTime();
+  const diffMs = baseExpiryDate.getTime() - effectiveNow.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 };
@@ -226,11 +264,12 @@ const MemberPage = ({
   );
   const selectedMemberNumber = selectedMember?.id ?? null;
   const selectedMemberStatus = selectedMember
-    ? getStatusLabel(
-        selectedMember.status,
-        Boolean(selectedMember.membershipPausedAt),
-      )
-    : null;
+      ? getStatusLabel(
+          selectedMember.status,
+          Boolean(selectedMember.membershipPausedAt),
+          Boolean(selectedMember.membershipId),
+        )
+      : null;
   const selectedMembershipRemainingDays = useMemo(
     () =>
       getRemainingDays(
@@ -313,11 +352,16 @@ const MemberPage = ({
             return getAge(member.birthDate);
           case "createdAt":
             return new Date(member.createdAt).getTime();
+          case "assignedAt":
+            return member.membershipAssignedAt
+              ? new Date(member.membershipAssignedAt).getTime()
+              : null;
           case "expiresAt": {
             const expiryDate = resolveExpiryDate(
               member.membershipExpiresAt,
               member.membershipAssignedAt,
               member.membershipDuration,
+              member.membershipTotalPausedMs,
             );
             return expiryDate ? expiryDate.getTime() : null;
           }
@@ -800,6 +844,7 @@ const MemberPage = ({
                   <th>전화번호</th>
                   {renderSortableHeader("등록일", "createdAt")}
                   <th>상태</th>
+                  {renderSortableHeader("시작일", "assignedAt")}
                   {renderSortableHeader("만료일", "expiresAt")}
                   <th>남은 기간</th>
                 </tr>
@@ -809,15 +854,18 @@ const MemberPage = ({
                   const statusInfo = getStatusLabel(
                     member.status,
                     Boolean(member.membershipPausedAt),
+                    Boolean(member.membershipId),
                   );
                   const resolvedExpiryDate = resolveExpiryDate(
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipTotalPausedMs,
                   );
-                  const expiresAtLabel = resolvedExpiryDate
-                    ? resolvedExpiryDate.toLocaleDateString("ko-KR")
-                    : "-";
+                  const expiresAtLabel =
+                    member.membershipPausedAt || !resolvedExpiryDate
+                      ? "-"
+                      : resolvedExpiryDate.toLocaleDateString("ko-KR");
                   const remainingDays = getRemainingDays(
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
@@ -858,6 +906,8 @@ const MemberPage = ({
                               ? " is-deleted"
                               : statusInfo.isPaused
                                 ? " is-paused"
+                                : statusInfo.isMembershipActive
+                                  ? " is-membership"
                                 : ""
                           }`}
                         >
@@ -866,6 +916,13 @@ const MemberPage = ({
                           )}
                           {statusInfo.label}
                         </span>
+                      </td>
+                      <td>
+                        {member.membershipAssignedAt
+                          ? new Date(
+                              member.membershipAssignedAt,
+                            ).toLocaleDateString("ko-KR")
+                          : "-"}
                       </td>
                       <td>{expiresAtLabel}</td>
                       <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
@@ -1149,6 +1206,8 @@ const MemberPage = ({
                           ? " is-deleted"
                           : selectedMemberStatus.isPaused
                             ? " is-paused"
+                            : selectedMemberStatus.isMembershipActive
+                              ? " is-membership"
                             : ""
                       }`}
                     >
@@ -1223,13 +1282,26 @@ const MemberPage = ({
                 )}
               </div>
               <div className="detail-item detail-item--wide">
+                <span className="detail-label">시작일</span>
+                <strong>
+                  {selectedMember.membershipAssignedAt
+                    ? new Date(
+                        selectedMember.membershipAssignedAt,
+                      ).toLocaleDateString("ko-KR")
+                    : "-"}
+                </strong>
+              </div>
+              <div className="detail-item detail-item--wide">
                 <span className="detail-label">만료일</span>
                 <strong>
-                  {resolveExpiryDate(
-                    selectedMember.membershipExpiresAt,
-                    selectedMember.membershipAssignedAt,
-                    selectedMember.membershipDuration,
-                  )?.toLocaleDateString("ko-KR") ?? "-"}
+                  {selectedMember.membershipPausedAt
+                    ? "-"
+                    : resolveExpiryDate(
+                        selectedMember.membershipExpiresAt,
+                        selectedMember.membershipAssignedAt,
+                        selectedMember.membershipDuration,
+                        selectedMember.membershipTotalPausedMs,
+                      )?.toLocaleDateString("ko-KR") ?? "-"}
                 </strong>
               </div>
               <div className="detail-item detail-item--wide">

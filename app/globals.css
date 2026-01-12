@@ -272,6 +272,11 @@ section {
   color: #92400e;
 }
 
+.status-label.is-membership {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

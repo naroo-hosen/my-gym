@@ -158,6 +158,16 @@ const MemberPage = ({
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const membershipOptions = useMemo(
     () =>
+      memberships
+        .filter((membership) => membership.status !== "DELETE")
+        .map((membership) => ({
+          id: membership.id,
+          label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
+        })),
+    [memberships],
+  );
+  const membershipLabelOptions = useMemo(
+    () =>
       memberships.map((membership) => ({
         id: membership.id,
         label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
@@ -217,11 +227,11 @@ const MemberPage = ({
     if (!selectedMember?.membershipId) {
       return "-";
     }
-    const option = membershipOptions.find(
+    const option = membershipLabelOptions.find(
       (membership) => membership.id === selectedMember.membershipId,
     );
     return option?.label ?? "중지된 회원권";
-  }, [membershipOptions, selectedMember?.membershipId]);
+  }, [membershipLabelOptions, selectedMember?.membershipId]);
   const canPauseMembership = Boolean(
     selectedMember?.membershipId && selectedMember?.status !== "DELETE",
   );

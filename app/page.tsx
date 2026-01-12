@@ -137,9 +137,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : (
         <MemberPage
           members={serializedMembers}
-          memberships={serializedMemberships.filter(
-            (membership) => membership.status !== "DELETE",
-          )}
+          memberships={serializedMemberships}
           searchTerm={searchTerm}
           searchField={searchField}
           membershipFilter={membershipFilter}

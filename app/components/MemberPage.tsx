@@ -46,6 +46,8 @@ type MemberPageProps = {
   section: "member" | "membership";
 };
 
+type MembershipFilter = "all" | "with" | "without";
+
 const PAGE_SIZE = 8;
 
 const getAge = (birthDate: string | null) => {
@@ -136,6 +138,8 @@ const MemberPage = ({
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
+  const [membershipFilter, setMembershipFilter] =
+    useState<MembershipFilter>("all");
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const membershipOptions = useMemo(
     () =>
@@ -146,9 +150,18 @@ const MemberPage = ({
     [memberships],
   );
 
+  const filteredMembers = useMemo(() => {
+    if (membershipFilter === "with") {
+      return members.filter((member) => member.membershipId !== null);
+    }
+    if (membershipFilter === "without") {
+      return members.filter((member) => member.membershipId === null);
+    }
+    return members;
+  }, [members, membershipFilter]);
   const countLabel = useMemo(
-    () => `총 ${members.length}명`,
-    [members.length],
+    () => `총 ${filteredMembers.length}명`,
+    [filteredMembers.length],
   );
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
@@ -225,11 +238,14 @@ const MemberPage = ({
 
     setPendingPauseMemberId(selectedMember.id);
   };
-  const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const filteredTotalPages = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / PAGE_SIZE),
+  );
   const pagedMembers = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return members.slice(start, start + PAGE_SIZE);
-  }, [members, page]);
+    return filteredMembers.slice(start, start + PAGE_SIZE);
+  }, [filteredMembers, page]);
   const handlePageChange = (nextPage: number) => {
     const safePage = Math.min(Math.max(nextPage, 1), filteredTotalPages);
     setPage(safePage);
@@ -247,7 +263,7 @@ const MemberPage = ({
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, searchField]);
+  }, [searchTerm, searchField, membershipFilter]);
 
   useEffect(() => {
     if (!selectedMemberId) return;
@@ -415,6 +431,25 @@ const MemberPage = ({
             >
               <select
                 className="search-field-select"
+                value={membershipFilter}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setMembershipFilter(
+                    value === "with"
+                      ? "with"
+                      : value === "without"
+                        ? "without"
+                        : "all",
+                  );
+                }}
+                aria-label="회원권 보유 여부"
+              >
+                <option value="all">전체</option>
+                <option value="with">회원권 있음</option>
+                <option value="without">회원권 없음</option>
+              </select>
+              <select
+                className="search-field-select"
                 value={draftSearchField}
                 onChange={(event) =>
                   setDraftSearchField(
@@ -458,7 +493,7 @@ const MemberPage = ({
             </div>
           </div>
         </div>
-        {members.length === 0 ? (
+        {filteredMembers.length === 0 ? (
           <p className="empty">
             {searchTerm.trim()
               ? "검색 결과가 없습니다."

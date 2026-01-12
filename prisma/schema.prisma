@@ -35,6 +35,8 @@ model MemberMembership {
   memberId     Int
   membershipId Int
   assignedAt   DateTime   @default(now())
+  pausedAt     DateTime?
+  totalPausedMs Int       @default(0)
   member       Member     @relation(fields: [memberId], references: [id])
   membership   Membership @relation(fields: [membershipId], references: [id])
 

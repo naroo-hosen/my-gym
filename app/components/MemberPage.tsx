@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   createMember,
   deleteMember,
+  pauseMemberMembership,
   restoreMember,
+  resumeMemberMembership,
   updateMember,
 } from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
@@ -22,6 +24,8 @@ type Member = {
   membershipId: number | null;
   membershipAssignedAt: string | null;
   membershipDuration: number | null;
+  membershipPausedAt: string | null;
+  membershipTotalPausedMs: number;
   createdAt: string;
 };
 
@@ -39,10 +43,21 @@ type MemberPageProps = {
   memberships: Membership[];
   searchTerm: string;
   searchField: "name" | "phone";
+  membershipFilter: MembershipFilter;
+  statusFilters: StatusFilter[];
   section: "member" | "membership";
 };
 
+type MembershipFilter = "all" | "with" | "without";
+type MembershipFilterOption = "with" | "without";
+type StatusFilter = "ACTIVE" | "DELETE" | "PAUSED";
+
 const PAGE_SIZE = 8;
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "ACTIVE", label: "정상" },
+  { value: "DELETE", label: "중지" },
+  { value: "PAUSED", label: "일시정지" },
+];
 
 const getAge = (birthDate: string | null) => {
   if (!birthDate) return null;
@@ -57,11 +72,14 @@ const getAge = (birthDate: string | null) => {
   return age;
 };
 
-const getStatusLabel = (status: string) => {
+const getStatusLabel = (status: string, isPaused: boolean) => {
   if (status === "DELETE") {
-    return { label: "중지", isDeleted: true };
+    return { label: "중지", isDeleted: true, isPaused: false, icon: "⛔" };
   }
-  return { label: "정상", isDeleted: false };
+  if (isPaused) {
+    return { label: "일시정지", isDeleted: false, isPaused: true, icon: "⏸️" };
+  }
+  return { label: "정상", isDeleted: false, isPaused: false, icon: null };
 };
 
 const formatDateInput = (birthDate: string | null) => {
@@ -74,6 +92,8 @@ const formatDateInput = (birthDate: string | null) => {
 const getRemainingDays = (
   assignedAt: string | null,
   durationMonths: number | null,
+  totalPausedMs: number,
+  pausedAt: string | null,
 ) => {
   if (!assignedAt || !durationMonths) {
     return null;
@@ -84,7 +104,12 @@ const getRemainingDays = (
   }
   const expiryDate = new Date(startDate);
   expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
-  const diffMs = expiryDate.getTime() - Date.now();
+  expiryDate.setTime(expiryDate.getTime() + totalPausedMs);
+  const effectiveNow = pausedAt ? new Date(pausedAt) : new Date();
+  if (Number.isNaN(effectiveNow.getTime())) {
+    return null;
+  }
+  const diffMs = expiryDate.getTime() - effectiveNow.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 };
@@ -103,6 +128,8 @@ const MemberPage = ({
   memberships,
   searchTerm,
   searchField,
+  membershipFilter,
+  statusFilters,
   section,
 }: MemberPageProps) => {
   const router = useRouter();
@@ -112,6 +139,9 @@ const MemberPage = ({
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
+  const [pendingPauseMemberId, setPendingPauseMemberId] = useState<
+    number | null
+  >(null);
   const [pendingMembershipAction, setPendingMembershipAction] = useState<{
     type: "assign" | "clear";
     membershipId: string;
@@ -119,6 +149,12 @@ const MemberPage = ({
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [membershipSelections, setMembershipSelections] = useState<
+    MembershipFilterOption[]
+  >([]);
+  const [statusSelections, setStatusSelections] =
+    useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const membershipOptions = useMemo(
     () =>
@@ -137,17 +173,34 @@ const MemberPage = ({
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
+  const pendingPauseMember = useMemo(
+    () =>
+      pendingPauseMemberId
+        ? members.find((member) => member.id === pendingPauseMemberId) ?? null
+        : null,
+    [members, pendingPauseMemberId],
+  );
   const selectedMemberNumber = selectedMember?.id ?? null;
   const selectedMemberStatus = selectedMember
-    ? getStatusLabel(selectedMember.status)
+    ? getStatusLabel(
+        selectedMember.status,
+        Boolean(selectedMember.membershipPausedAt),
+      )
     : null;
   const selectedMembershipRemainingDays = useMemo(
     () =>
       getRemainingDays(
         selectedMember?.membershipAssignedAt ?? null,
         selectedMember?.membershipDuration ?? null,
+        selectedMember?.membershipTotalPausedMs ?? 0,
+        selectedMember?.membershipPausedAt ?? null,
       ),
-    [selectedMember?.membershipAssignedAt, selectedMember?.membershipDuration],
+    [
+      selectedMember?.membershipAssignedAt,
+      selectedMember?.membershipDuration,
+      selectedMember?.membershipPausedAt,
+      selectedMember?.membershipTotalPausedMs,
+    ],
   );
   const selectedMembershipValue = useMemo(() => {
     if (!selectedMember?.membershipId) {
@@ -169,6 +222,10 @@ const MemberPage = ({
     );
     return option?.label ?? "중지된 회원권";
   }, [membershipOptions, selectedMember?.membershipId]);
+  const canPauseMembership = Boolean(
+    selectedMember?.membershipId && selectedMember?.status !== "DELETE",
+  );
+  const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -179,6 +236,13 @@ const MemberPage = ({
     } else {
       setPendingDeleteId(selectedMember.id);
     }
+  };
+  const handlePauseClick = () => {
+    if (!selectedMember) {
+      return;
+    }
+
+    setPendingPauseMemberId(selectedMember.id);
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
@@ -200,9 +264,27 @@ const MemberPage = ({
     }
   }, [editingField, selectedMembershipValue]);
 
+  const resolvedStatusSelections = useMemo(() => {
+    if (statusFilters.length === 0) {
+      return STATUS_OPTIONS.map((option) => option.value);
+    }
+    return statusFilters;
+  }, [statusFilters]);
+
+  useEffect(() => {
+    if (membershipFilter === "with") {
+      setMembershipSelections(["with"]);
+    } else if (membershipFilter === "without") {
+      setMembershipSelections(["without"]);
+    } else {
+      setMembershipSelections(["with", "without"]);
+    }
+    setStatusSelections(resolvedStatusSelections);
+  }, [membershipFilter, resolvedStatusSelections]);
+
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, searchField]);
+  }, [searchTerm, searchField, membershipFilter, resolvedStatusSelections]);
 
   useEffect(() => {
     if (!selectedMemberId) return;
@@ -217,6 +299,49 @@ const MemberPage = ({
     setDraftSearchField(searchField);
   }, [searchField, searchTerm]);
 
+  const buildQueryParams = (
+    term: string,
+    field: "name" | "phone",
+    membership: MembershipFilterOption[],
+    statuses: StatusFilter[],
+  ) => {
+    const params = new URLSearchParams();
+    const trimmedTerm = term.trim();
+
+    if (trimmedTerm) {
+      params.set("q", trimmedTerm);
+    }
+    params.set("field", field);
+
+    if (membership.length === 1) {
+      params.set("membership", membership[0]);
+    }
+
+    const uniqueStatuses = Array.from(new Set(statuses));
+    if (uniqueStatuses.length > 0 && uniqueStatuses.length < STATUS_OPTIONS.length) {
+      params.set("status", uniqueStatuses.join(","));
+    }
+
+    if (section === "membership") {
+      params.set("section", "membership");
+    }
+
+    return params;
+  };
+
+  const pushQuery = (
+    term: string,
+    field: "name" | "phone",
+    membership: MembershipFilterOption[],
+    statuses: StatusFilter[],
+  ) => {
+    const params = buildQueryParams(term, field, membership, statuses);
+    const query = params.toString();
+    startTransition(() => {
+      router.push(query ? `/?${query}` : "/");
+    });
+  };
+
   useEffect(() => {
     if (
       draftSearchTerm === searchTerm &&
@@ -225,23 +350,12 @@ const MemberPage = ({
       return;
     }
     const handler = setTimeout(() => {
-      const params = new URLSearchParams();
-      const trimmedTerm = draftSearchTerm.trim();
-
-      if (trimmedTerm) {
-        params.set("q", trimmedTerm);
-      }
-      params.set("field", draftSearchField);
-      if (section === "membership") {
-        params.set("section", "membership");
-      } else {
-        params.delete("section");
-      }
-
-      const query = params.toString();
-      startTransition(() => {
-        router.push(query ? `/?${query}` : "/");
-      });
+      pushQuery(
+        draftSearchTerm,
+        draftSearchField,
+        membershipSelections,
+        statusSelections,
+      );
     }, 300);
 
     return () => clearTimeout(handler);
@@ -252,6 +366,41 @@ const MemberPage = ({
     searchField,
     searchTerm,
     startTransition,
+  ]);
+
+  const currentMembershipParam =
+    membershipSelections.length === 1 ? membershipSelections[0] : "all";
+  const currentStatusParam = Array.from(new Set(statusSelections)).sort().join(",");
+  const initialStatusParam = Array.from(
+    new Set(resolvedStatusSelections),
+  )
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (
+      (membershipFilter === "all" && currentMembershipParam === "all") ||
+      membershipFilter === currentMembershipParam
+    ) {
+      if (currentStatusParam === initialStatusParam) {
+        return;
+      }
+    }
+    pushQuery(
+      draftSearchTerm,
+      draftSearchField,
+      membershipSelections,
+      statusSelections,
+    );
+  }, [
+    currentMembershipParam,
+    currentStatusParam,
+    draftSearchField,
+    draftSearchTerm,
+    initialStatusParam,
+    membershipFilter,
+    membershipSelections,
+    statusSelections,
   ]);
 
   const startEdit = (field: EditableField) => {
@@ -368,6 +517,79 @@ const MemberPage = ({
               className="search-form"
               onSubmit={(event) => event.preventDefault()}
             >
+              <div className="filter-wrap">
+                <button
+                  className="filter-button"
+                  type="button"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
+                  aria-expanded={isFilterOpen}
+                  aria-controls="member-filter-panel"
+                >
+                  <span className="filter-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                      <path
+                        d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6l-6.2 8.27V19a1 1 0 0 1-1.45.9l-2.5-1.25a1 1 0 0 1-.55-.9v-3.13L3.2 5.6A1 1 0 0 1 3 5Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
+                  <span>필터</span>
+                </button>
+                {isFilterOpen && (
+                  <div className="filter-panel" id="member-filter-panel">
+                    <div className="filter-group">
+                      <span className="filter-title">회원권</span>
+                      <label className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={membershipSelections.includes("with")}
+                          onChange={() =>
+                            setMembershipSelections((prev) =>
+                              prev.includes("with")
+                                ? prev.filter((value) => value !== "with")
+                                : [...prev, "with"],
+                            )
+                          }
+                        />
+                        회원권 있음
+                      </label>
+                      <label className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={membershipSelections.includes("without")}
+                          onChange={() =>
+                            setMembershipSelections((prev) =>
+                              prev.includes("without")
+                                ? prev.filter((value) => value !== "without")
+                                : [...prev, "without"],
+                            )
+                          }
+                        />
+                        회원권 없음
+                      </label>
+                    </div>
+                    <div className="filter-group">
+                      <span className="filter-title">회원 상태</span>
+                      {STATUS_OPTIONS.map((option) => (
+                        <label key={option.value} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={statusSelections.includes(option.value)}
+                            onChange={() =>
+                              setStatusSelections((prev) =>
+                                prev.includes(option.value)
+                                  ? prev.filter((value) => value !== option.value)
+                                  : [...prev, option.value],
+                              )
+                            }
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <select
                 className="search-field-select"
                 value={draftSearchField}
@@ -438,10 +660,15 @@ const MemberPage = ({
               </thead>
               <tbody>
                 {pagedMembers.map((member) => {
-                  const statusInfo = getStatusLabel(member.status);
+                  const statusInfo = getStatusLabel(
+                    member.status,
+                    Boolean(member.membershipPausedAt),
+                  );
                   const remainingDays = getRemainingDays(
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipTotalPausedMs,
+                    member.membershipPausedAt,
                   );
                   return (
                     <tr
@@ -472,11 +699,15 @@ const MemberPage = ({
                       <td>
                         <span
                           className={`status-label${
-                            statusInfo.isDeleted ? " is-deleted" : ""
+                            statusInfo.isDeleted
+                              ? " is-deleted"
+                              : statusInfo.isPaused
+                                ? " is-paused"
+                                : ""
                           }`}
                         >
-                          {statusInfo.isDeleted && (
-                            <span aria-hidden="true">⛔</span>
+                          {statusInfo.icon && (
+                            <span aria-hidden="true">{statusInfo.icon}</span>
                           )}
                           {statusInfo.label}
                         </span>
@@ -499,6 +730,15 @@ const MemberPage = ({
             <div className="panel-header">
               <h2>회원 상세</h2>
               <div className="panel-actions">
+                {canPauseMembership && (
+                  <button
+                    className="button-secondary"
+                    type="button"
+                    onClick={handlePauseClick}
+                  >
+                    {isMembershipPaused ? "일시정지 해제" : "일시정지"}
+                  </button>
+                )}
                 <button
                   className={
                     selectedMember.status === "DELETE"
@@ -749,11 +989,17 @@ const MemberPage = ({
                   {selectedMemberStatus && (
                     <span
                       className={`status-label${
-                        selectedMemberStatus.isDeleted ? " is-deleted" : ""
+                        selectedMemberStatus.isDeleted
+                          ? " is-deleted"
+                          : selectedMemberStatus.isPaused
+                            ? " is-paused"
+                            : ""
                       }`}
                     >
-                      {selectedMemberStatus.isDeleted && (
-                        <span aria-hidden="true">⛔</span>
+                      {selectedMemberStatus.icon && (
+                        <span aria-hidden="true">
+                          {selectedMemberStatus.icon}
+                        </span>
                       )}
                       {selectedMemberStatus.label}
                     </span>
@@ -890,6 +1136,44 @@ const MemberPage = ({
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
                   중지하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPauseMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              {pendingPauseMember.membershipPausedAt
+                ? "일시정지를 해제할까요? 해제하면 오늘부터 다시 차감됩니다."
+                : "회원권을 일시정지할까요? 일시정지 동안 남은 기간이 유지됩니다."}
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingPauseMemberId(null)}
+              >
+                취소
+              </button>
+              <form
+                action={
+                  pendingPauseMember.membershipPausedAt
+                    ? resumeMemberMembership
+                    : pauseMemberMembership
+                }
+                onSubmit={() => setPendingPauseMemberId(null)}
+              >
+                <input
+                  type="hidden"
+                  name="memberId"
+                  value={pendingPauseMember.id}
+                />
+                <button className="button-primary" type="submit">
+                  확인
                 </button>
               </form>
             </div>

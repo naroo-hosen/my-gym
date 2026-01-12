@@ -21,6 +21,7 @@ type MemberPageProps = {
   members: Member[];
   searchTerm: string;
   searchField: "name" | "phone";
+  section: "member" | "membership";
 };
 
 const PAGE_SIZE = 8;
@@ -64,6 +65,7 @@ const MemberPage = ({
   members,
   searchTerm,
   searchField,
+  section,
 }: MemberPageProps) => {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -146,6 +148,11 @@ const MemberPage = ({
         params.set("q", trimmedTerm);
       }
       params.set("field", draftSearchField);
+      if (section === "membership") {
+        params.set("section", "membership");
+      } else {
+        params.delete("section");
+      }
 
       const query = params.toString();
       startTransition(() => {

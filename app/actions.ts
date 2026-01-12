@@ -115,3 +115,40 @@ export const deleteMember = async (formData: FormData) => {
 
   revalidatePath("/");
 };
+
+export const createMembership = async (formData: FormData) => {
+  const duration = formData.get("duration")?.toString().trim();
+  const weeklyAttendance = Number(formData.get("weeklyAttendance"));
+  const price = Number(formData.get("price"));
+
+  if (!duration || Number.isNaN(weeklyAttendance) || Number.isNaN(price)) {
+    return;
+  }
+
+  await prisma.membership.create({
+    data: {
+      duration,
+      weeklyAttendance,
+      price,
+    },
+  });
+
+  revalidatePath("/");
+};
+
+export const deleteMembership = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return;
+  }
+
+  await prisma.membership.update({
+    where: { id },
+    data: {
+      status: "DELETE",
+    },
+  });
+
+  revalidatePath("/");
+};

@@ -518,14 +518,21 @@ const MemberPage = ({
             >
               <div className="filter-wrap">
                 <button
-                  className="button-ghost filter-button"
+                  className="filter-button"
                   type="button"
                   onClick={() => setIsFilterOpen((prev) => !prev)}
                   aria-expanded={isFilterOpen}
                   aria-controls="member-filter-panel"
                 >
-                  <span aria-hidden="true">🔍</span>
-                  필터
+                  <span className="filter-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                      <path
+                        d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6l-6.2 8.27V19a1 1 0 0 1-1.45.9l-2.5-1.25a1 1 0 0 1-.55-.9v-3.13L3.2 5.6A1 1 0 0 1 3 5Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
+                  <span>필터</span>
                 </button>
                 {isFilterOpen && (
                   <div className="filter-panel" id="member-filter-panel">

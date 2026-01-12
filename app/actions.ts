@@ -50,7 +50,6 @@ export const updateMember = async (formData: FormData) => {
     gender?: string | null;
     parentPhone?: string | null;
     memo?: string | null;
-    membershipId?: number | null;
   } = {};
 
   if (rawName !== null) {
@@ -89,25 +88,65 @@ export const updateMember = async (formData: FormData) => {
     data.memo = memoValue ? memoValue : null;
   }
 
+  let membershipSelection:
+    | { type: "clear" }
+    | { type: "assign"; membershipId: number }
+    | null = null;
   if (rawMembershipId !== null) {
     const membershipValue = rawMembershipId.toString().trim();
     if (!membershipValue || membershipValue === "none") {
-      data.membershipId = null;
+      membershipSelection = { type: "clear" };
     } else {
       const membershipId = Number(membershipValue);
       if (membershipId) {
-        data.membershipId = membershipId;
+        membershipSelection = { type: "assign", membershipId };
       }
     }
   }
 
-  if (Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0 && membershipSelection === null) {
     return;
   }
 
-  await prisma.member.update({
-    where: { id },
-    data,
+  if (membershipSelection?.type === "assign") {
+    const membership = await prisma.membership.findFirst({
+      where: {
+        id: membershipSelection.membershipId,
+        status: {
+          not: "DELETE",
+        },
+      },
+      select: { id: true },
+    });
+    if (!membership) {
+      return;
+    }
+  }
+
+  await prisma.$transaction(async (transaction) => {
+    if (Object.keys(data).length > 0) {
+      await transaction.member.update({
+        where: { id },
+        data,
+      });
+    }
+
+    if (membershipSelection?.type === "clear") {
+      await transaction.memberMembership.deleteMany({
+        where: { memberId: id },
+      });
+    }
+
+    if (membershipSelection?.type === "assign") {
+      await transaction.memberMembership.upsert({
+        where: { memberId: id },
+        update: { membershipId: membershipSelection.membershipId },
+        create: {
+          memberId: id,
+          membershipId: membershipSelection.membershipId,
+        },
+      });
+    }
   });
 
   revalidatePath("/");

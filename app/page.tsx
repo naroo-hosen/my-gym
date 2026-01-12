@@ -26,6 +26,14 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
             },
           }
         : undefined,
+      include: {
+        memberMemberships: {
+          orderBy: {
+            assignedAt: "desc",
+          },
+          take: 1,
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -46,7 +54,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     parentPhone: member.parentPhone,
     memo: member.memo,
     status: member.status,
-    membershipId: member.membershipId,
+    membershipId: member.memberMemberships[0]?.membershipId ?? null,
     createdAt: member.createdAt.toISOString(),
   }));
   const serializedMemberships = memberships.map((membership) => ({

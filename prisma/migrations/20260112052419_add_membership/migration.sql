@@ -1,0 +1,9 @@
+-- CreateTable
+CREATE TABLE "Membership" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "duration" TEXT NOT NULL,
+    "weeklyAttendance" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

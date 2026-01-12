@@ -1,9 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const Sidebar = () => {
   const [isMembersOpen, setIsMembersOpen] = useState(true);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const section =
+    searchParams.get("section") === "membership" ? "membership" : "member";
+
+  const handleNavigate = (nextSection: "member" | "membership") => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextSection === "membership") {
+      params.set("section", "membership");
+      params.delete("q");
+      params.delete("field");
+    } else {
+      params.delete("section");
+    }
+
+    const query = params.toString();
+    router.push(query ? `/?${query}` : "/");
+  };
 
   return (
     <aside className="sidebar">
@@ -30,8 +50,23 @@ const Sidebar = () => {
           </button>
           {isMembersOpen && (
             <div id="member-submenu" className="menu-sub">
-              <button className="menu-item sub active" type="button">
+              <button
+                className={`menu-item sub${
+                  section === "member" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("member")}
+              >
                 회원
+              </button>
+              <button
+                className={`menu-item sub${
+                  section === "membership" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("membership")}
+              >
+                회원권
               </button>
             </div>
           )}

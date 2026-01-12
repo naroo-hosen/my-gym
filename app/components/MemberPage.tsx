@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createMember, deleteMember, updateMember } from "@/app/actions";
+import {
+  createMember,
+  deleteMember,
+  restoreMember,
+  updateMember,
+} from "@/app/actions";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -14,11 +19,24 @@ type Member = {
   parentPhone: string | null;
   memo: string | null;
   status: string;
+  membershipId: number | null;
+  membershipAssignedAt: string | null;
+  membershipDuration: number | null;
+  createdAt: string;
+};
+
+type Membership = {
+  id: number;
+  duration: number;
+  weeklyAttendance: number;
+  price: number;
+  status: string;
   createdAt: string;
 };
 
 type MemberPageProps = {
   members: Member[];
+  memberships: Membership[];
   searchTerm: string;
   searchField: "name" | "phone";
   section: "member" | "membership";
@@ -53,16 +71,36 @@ const formatDateInput = (birthDate: string | null) => {
   return date.toISOString().split("T")[0];
 };
 
+const getRemainingDays = (
+  assignedAt: string | null,
+  durationMonths: number | null,
+) => {
+  if (!assignedAt || !durationMonths) {
+    return null;
+  }
+  const startDate = new Date(assignedAt);
+  if (Number.isNaN(startDate.getTime())) {
+    return null;
+  }
+  const expiryDate = new Date(startDate);
+  expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
+  const diffMs = expiryDate.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+};
+
 type EditableField =
   | "name"
   | "phone"
   | "birthDate"
   | "gender"
   | "parentPhone"
-  | "memo";
+  | "memo"
+  | "membershipId";
 
 const MemberPage = ({
   members,
+  memberships,
   searchTerm,
   searchField,
   section,
@@ -73,10 +111,23 @@ const MemberPage = ({
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [isAlreadyStoppedOpen, setIsAlreadyStoppedOpen] = useState(false);
+  const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
+  const [pendingMembershipAction, setPendingMembershipAction] = useState<{
+    type: "assign" | "clear";
+    membershipId: string;
+  } | null>(null);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
   const [draftSearchField, setDraftSearchField] = useState(searchField);
+  const [membershipDraftValue, setMembershipDraftValue] = useState("none");
+  const membershipOptions = useMemo(
+    () =>
+      memberships.map((membership) => ({
+        id: membership.id,
+        label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
+      })),
+    [memberships],
+  );
 
   const countLabel = useMemo(
     () => `총 ${members.length}명`,
@@ -90,17 +141,44 @@ const MemberPage = ({
   const selectedMemberStatus = selectedMember
     ? getStatusLabel(selectedMember.status)
     : null;
+  const selectedMembershipRemainingDays = useMemo(
+    () =>
+      getRemainingDays(
+        selectedMember?.membershipAssignedAt ?? null,
+        selectedMember?.membershipDuration ?? null,
+      ),
+    [selectedMember?.membershipAssignedAt, selectedMember?.membershipDuration],
+  );
+  const selectedMembershipValue = useMemo(() => {
+    if (!selectedMember?.membershipId) {
+      return "none";
+    }
+    const hasActiveMembership = membershipOptions.some(
+      (membership) => membership.id === selectedMember.membershipId,
+    );
+    return hasActiveMembership
+      ? String(selectedMember.membershipId)
+      : "none";
+  }, [membershipOptions, selectedMember?.membershipId]);
+  const selectedMembershipLabel = useMemo(() => {
+    if (!selectedMember?.membershipId) {
+      return "-";
+    }
+    const option = membershipOptions.find(
+      (membership) => membership.id === selectedMember.membershipId,
+    );
+    return option?.label ?? "중지된 회원권";
+  }, [membershipOptions, selectedMember?.membershipId]);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
     }
 
     if (selectedMember.status === "DELETE") {
-      setIsAlreadyStoppedOpen(true);
-      return;
+      setPendingRestoreId(selectedMember.id);
+    } else {
+      setPendingDeleteId(selectedMember.id);
     }
-
-    setPendingDeleteId(selectedMember.id);
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const pagedMembers = useMemo(() => {
@@ -115,6 +193,12 @@ const MemberPage = ({
   useEffect(() => {
     setEditingField(null);
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (editingField === "membershipId") {
+      setMembershipDraftValue(selectedMembershipValue);
+    }
+  }, [editingField, selectedMembershipValue]);
 
   useEffect(() => {
     setPage(1);
@@ -176,6 +260,24 @@ const MemberPage = ({
 
   const closeEdit = () => {
     setEditingField(null);
+  };
+
+  const handleMembershipSave = () => {
+    if (membershipDraftValue === selectedMembershipValue) {
+      closeEdit();
+      return;
+    }
+    if (membershipDraftValue === "none") {
+      setPendingMembershipAction({
+        type: "clear",
+        membershipId: "none",
+      });
+    } else {
+      setPendingMembershipAction({
+        type: "assign",
+        membershipId: membershipDraftValue,
+      });
+    }
   };
 
   return (
@@ -331,11 +433,16 @@ const MemberPage = ({
                   <th>전화번호</th>
                   <th>등록일</th>
                   <th>상태</th>
+                  <th>남은 기간</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedMembers.map((member) => {
                   const statusInfo = getStatusLabel(member.status);
+                  const remainingDays = getRemainingDays(
+                    member.membershipAssignedAt,
+                    member.membershipDuration,
+                  );
                   return (
                     <tr
                       key={member.id}
@@ -374,6 +481,7 @@ const MemberPage = ({
                           {statusInfo.label}
                         </span>
                       </td>
+                      <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
                     </tr>
                   );
                 })}
@@ -392,11 +500,15 @@ const MemberPage = ({
               <h2>회원 상세</h2>
               <div className="panel-actions">
                 <button
-                  className="button-danger"
+                  className={
+                    selectedMember.status === "DELETE"
+                      ? "button-primary"
+                      : "button-danger"
+                  }
                   type="button"
                   onClick={handleStopClick}
                 >
-                  중지
+                  {selectedMember.status === "DELETE" ? "복구" : "중지"}
                 </button>
               </div>
             </div>
@@ -648,6 +760,69 @@ const MemberPage = ({
                   )}
                 </strong>
               </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">회원권</span>
+                {editingField === "membershipId" ? (
+                  <form
+                    action={updateMember}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input type="hidden" name="id" value={selectedMember.id} />
+                    <select
+                      className="membership-select"
+                      name="membershipId"
+                      value={membershipDraftValue}
+                      onChange={(event) =>
+                        setMembershipDraftValue(event.target.value)
+                      }
+                    >
+                      <option value="none">선택 안 함</option>
+                      {membershipOptions.map((membership) => (
+                        <option key={membership.id} value={membership.id}>
+                          {membership.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="detail-edit-actions">
+                      <button
+                        className="button-primary"
+                        type="button"
+                        onClick={handleMembershipSave}
+                      >
+                        저장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>{selectedMembershipLabel}</strong>
+                    <button
+                      className="detail-edit-button"
+                      type="button"
+                      onClick={() => startEdit("membershipId")}
+                      aria-label="회원권 변경"
+                    >
+                      <span aria-hidden="true">✏️</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">남은 기간</span>
+                <strong>
+                  {selectedMembershipRemainingDays !== null
+                    ? `${selectedMembershipRemainingDays}일`
+                    : "-"}
+                </strong>
+              </div>
             </div>
             <div className="detail-memo">
               <span className="detail-label">메모</span>
@@ -722,18 +897,67 @@ const MemberPage = ({
         </div>
       )}
 
-      {isAlreadyStoppedOpen && (
+      {pendingMembershipAction && selectedMember && (
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
-            <p className="confirm-message">이미 중지된 회원입니다.</p>
+            <p className="confirm-message">
+              {pendingMembershipAction.type === "assign"
+                ? "회원권을 부여하면 지금부터 바로 적용됩니다. 진행할까요?"
+                : "회원권 부여를 취소하면 복구할 수 없습니다. 진행할까요?"}
+            </p>
             <div className="panel-actions center">
               <button
-                className="button-primary"
+                className="button-secondary"
                 type="button"
-                onClick={() => setIsAlreadyStoppedOpen(false)}
+                onClick={() => setPendingMembershipAction(null)}
               >
-                확인
+                취소
               </button>
+              <form
+                action={updateMember}
+                onSubmit={() => {
+                  setPendingMembershipAction(null);
+                  closeEdit();
+                }}
+              >
+                <input type="hidden" name="id" value={selectedMember.id} />
+                <input
+                  type="hidden"
+                  name="membershipId"
+                  value={pendingMembershipAction.membershipId}
+                />
+                <button className="button-primary" type="submit">
+                  확인
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingRestoreId !== null && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              선택한 회원을 복구할까요? 복구 후에는 정상 상태로 전환됩니다.
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingRestoreId(null)}
+              >
+                취소
+              </button>
+              <form
+                action={restoreMember}
+                onSubmit={() => setPendingRestoreId(null)}
+              >
+                <input type="hidden" name="id" value={pendingRestoreId} />
+                <button className="button-primary" type="submit">
+                  복구하기
+                </button>
+              </form>
             </div>
           </div>
         </div>

@@ -37,6 +37,7 @@ export const updateMember = async (formData: FormData) => {
   const rawGender = formData.get("gender");
   const rawParentPhone = formData.get("parentPhone");
   const rawMemo = formData.get("memo");
+  const rawMembershipId = formData.get("membershipId");
 
   if (!id) {
     return;
@@ -87,13 +88,65 @@ export const updateMember = async (formData: FormData) => {
     data.memo = memoValue ? memoValue : null;
   }
 
-  if (Object.keys(data).length === 0) {
+  let membershipSelection:
+    | { type: "clear" }
+    | { type: "assign"; membershipId: number }
+    | null = null;
+  if (rawMembershipId !== null) {
+    const membershipValue = rawMembershipId.toString().trim();
+    if (!membershipValue || membershipValue === "none") {
+      membershipSelection = { type: "clear" };
+    } else {
+      const membershipId = Number(membershipValue);
+      if (membershipId) {
+        membershipSelection = { type: "assign", membershipId };
+      }
+    }
+  }
+
+  if (Object.keys(data).length === 0 && membershipSelection === null) {
     return;
   }
 
-  await prisma.member.update({
-    where: { id },
-    data,
+  if (membershipSelection?.type === "assign") {
+    const membership = await prisma.membership.findFirst({
+      where: {
+        id: membershipSelection.membershipId,
+        status: {
+          not: "DELETE",
+        },
+      },
+      select: { id: true },
+    });
+    if (!membership) {
+      return;
+    }
+  }
+
+  await prisma.$transaction(async (transaction) => {
+    if (Object.keys(data).length > 0) {
+      await transaction.member.update({
+        where: { id },
+        data,
+      });
+    }
+
+    if (membershipSelection?.type === "clear") {
+      await transaction.memberMembership.deleteMany({
+        where: { memberId: id },
+      });
+    }
+
+    if (membershipSelection?.type === "assign") {
+      await transaction.memberMembership.upsert({
+        where: { memberId: id },
+        update: { membershipId: membershipSelection.membershipId },
+        create: {
+          memberId: id,
+          membershipId: membershipSelection.membershipId,
+        },
+      });
+    }
   });
 
   revalidatePath("/");
@@ -110,6 +163,23 @@ export const deleteMember = async (formData: FormData) => {
     where: { id },
     data: {
       status: "DELETE",
+    },
+  });
+
+  revalidatePath("/");
+};
+
+export const restoreMember = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return;
+  }
+
+  await prisma.member.update({
+    where: { id },
+    data: {
+      status: "ACTIVE",
     },
   });
 
@@ -152,6 +222,23 @@ export const deleteMembership = async (formData: FormData) => {
     where: { id },
     data: {
       status: "DELETE",
+    },
+  });
+
+  revalidatePath("/");
+};
+
+export const restoreMembership = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return;
+  }
+
+  await prisma.membership.update({
+    where: { id },
+    data: {
+      status: "ACTIVE",
     },
   });
 

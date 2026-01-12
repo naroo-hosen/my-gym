@@ -8,15 +8,16 @@ datasource db {
 }
 
 model Member {
-  id          Int      @id @default(autoincrement())
-  name        String
-  phone       String
-  birthDate   DateTime?
-  gender      String?
-  parentPhone String?
-  memo        String?
-  status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now())
+  id                Int                @id @default(autoincrement())
+  name              String
+  phone             String
+  birthDate         DateTime?
+  gender            String?
+  parentPhone       String?
+  memo              String?
+  status            String             @default("ACTIVE")
+  createdAt         DateTime           @default(now())
+  memberMemberships MemberMembership[]
 }
 
 model Membership {
@@ -26,4 +27,16 @@ model Membership {
   price            Int
   status           String   @default("ACTIVE")
   createdAt        DateTime @default(now())
+  memberMemberships MemberMembership[]
+}
+
+model MemberMembership {
+  id           Int        @id @default(autoincrement())
+  memberId     Int
+  membershipId Int
+  assignedAt   DateTime   @default(now())
+  member       Member     @relation(fields: [memberId], references: [id])
+  membership   Membership @relation(fields: [membershipId], references: [id])
+
+  @@unique([memberId])
 }

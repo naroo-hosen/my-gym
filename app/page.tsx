@@ -26,6 +26,17 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
             },
           }
         : undefined,
+      include: {
+        memberMemberships: {
+          include: {
+            membership: true,
+          },
+          orderBy: {
+            assignedAt: "desc",
+          },
+          take: 1,
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -46,6 +57,10 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     parentPhone: member.parentPhone,
     memo: member.memo,
     status: member.status,
+    membershipId: member.memberMemberships[0]?.membershipId ?? null,
+    membershipAssignedAt: member.memberMemberships[0]?.assignedAt.toISOString() ?? null,
+    membershipDuration:
+      member.memberMemberships[0]?.membership?.duration ?? null,
     createdAt: member.createdAt.toISOString(),
   }));
   const serializedMemberships = memberships.map((membership) => ({
@@ -66,6 +81,9 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : (
         <MemberPage
           members={serializedMembers}
+          memberships={serializedMemberships.filter(
+            (membership) => membership.status !== "DELETE",
+          )}
           searchTerm={searchTerm}
           searchField={searchField}
           section={section}

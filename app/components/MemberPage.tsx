@@ -58,6 +58,7 @@ type SortKey =
   | "birthDate"
   | "age"
   | "createdAt"
+  | "assignedAt"
   | "expiresAt";
 
 const PAGE_SIZE = 8;
@@ -319,6 +320,10 @@ const MemberPage = ({
             return getAge(member.birthDate);
           case "createdAt":
             return new Date(member.createdAt).getTime();
+          case "assignedAt":
+            return member.membershipAssignedAt
+              ? new Date(member.membershipAssignedAt).getTime()
+              : null;
           case "expiresAt": {
             const expiryDate = resolveExpiryDate(
               member.membershipExpiresAt,
@@ -807,6 +812,7 @@ const MemberPage = ({
                   <th>전화번호</th>
                   {renderSortableHeader("등록일", "createdAt")}
                   <th>상태</th>
+                  {renderSortableHeader("시작일", "assignedAt")}
                   {renderSortableHeader("만료일", "expiresAt")}
                   <th>남은 기간</th>
                 </tr>
@@ -875,6 +881,13 @@ const MemberPage = ({
                           )}
                           {statusInfo.label}
                         </span>
+                      </td>
+                      <td>
+                        {member.membershipAssignedAt
+                          ? new Date(
+                              member.membershipAssignedAt,
+                            ).toLocaleDateString("ko-KR")
+                          : "-"}
                       </td>
                       <td>{expiresAtLabel}</td>
                       <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
@@ -1230,6 +1243,16 @@ const MemberPage = ({
                     </button>
                   </div>
                 )}
+              </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">시작일</span>
+                <strong>
+                  {selectedMember.membershipAssignedAt
+                    ? new Date(
+                        selectedMember.membershipAssignedAt,
+                      ).toLocaleDateString("ko-KR")
+                    : "-"}
+                </strong>
               </div>
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">만료일</span>

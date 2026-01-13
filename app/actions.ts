@@ -1,7 +1,39 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type MemberActivityPayload = {
+  memberId: number;
+  type: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+};
+
+const formatMembershipLabel = (membership: {
+  duration: number;
+  weeklyAttendance: number;
+  price: number;
+}) =>
+  `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString(
+    "ko-KR",
+  )}원`;
+
+type PrismaClientLike = Prisma.TransactionClient | typeof prisma;
+
+const createMemberActivity = async (
+  transaction: PrismaClientLike,
+  payload: MemberActivityPayload,
+) =>
+  transaction.memberActivity.create({
+    data: {
+      memberId: payload.memberId,
+      type: payload.type,
+      description: payload.description,
+      metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
+    },
+  });
 
 export const createMember = async (formData: FormData) => {
   const name = formData.get("name")?.toString().trim();
@@ -15,7 +47,7 @@ export const createMember = async (formData: FormData) => {
     return;
   }
 
-  await prisma.member.create({
+  const member = await prisma.member.create({
     data: {
       name,
       phone,
@@ -24,6 +56,12 @@ export const createMember = async (formData: FormData) => {
       parentPhone: parentPhone || null,
       memo: memo || null,
     },
+  });
+
+  await createMemberActivity(prisma, {
+    memberId: member.id,
+    type: "member_created",
+    description: "회원 등록",
   });
 
   revalidatePath("/");
@@ -109,6 +147,14 @@ export const updateMember = async (formData: FormData) => {
   }
 
   let membershipDuration: number | null = null;
+  let selectedMembership:
+    | {
+        id: number;
+        duration: number;
+        weeklyAttendance: number;
+        price: number;
+      }
+    | null = null;
   if (membershipSelection?.type === "assign") {
     const membership = await prisma.membership.findFirst({
       where: {
@@ -117,15 +163,22 @@ export const updateMember = async (formData: FormData) => {
           not: "DELETE",
         },
       },
-      select: { id: true, duration: true },
+      select: { id: true, duration: true, weeklyAttendance: true, price: true },
     });
     if (!membership) {
       return;
     }
     membershipDuration = membership.duration;
+    selectedMembership = membership;
   }
 
   await prisma.$transaction(async (transaction) => {
+    const existingMembership = await transaction.memberMembership.findUnique({
+      where: { memberId: id },
+      select: {
+        membershipId: true,
+      },
+    });
     if (Object.keys(data).length > 0) {
       await transaction.member.update({
         where: { id },
@@ -134,9 +187,30 @@ export const updateMember = async (formData: FormData) => {
     }
 
     if (membershipSelection?.type === "clear") {
-      await transaction.memberMembership.deleteMany({
-        where: { memberId: id },
-      });
+      if (existingMembership?.membershipId) {
+        const previousMembership = await transaction.membership.findUnique({
+          where: { id: existingMembership.membershipId },
+          select: { duration: true, weeklyAttendance: true, price: true },
+        });
+        await transaction.memberMembership.deleteMany({
+          where: { memberId: id },
+        });
+        await createMemberActivity(transaction, {
+          memberId: id,
+          type: "membership_revoked",
+          description: previousMembership
+            ? `회원권 회수 (${formatMembershipLabel(previousMembership)})`
+            : "회원권 회수",
+          metadata: previousMembership
+            ? {
+                membershipId: existingMembership.membershipId,
+                duration: previousMembership.duration,
+                weeklyAttendance: previousMembership.weeklyAttendance,
+                price: previousMembership.price,
+              }
+            : undefined,
+        });
+      }
     }
 
     if (membershipSelection?.type === "assign" && membershipDuration) {
@@ -159,6 +233,24 @@ export const updateMember = async (formData: FormData) => {
           expiresAt,
         },
       });
+      if (selectedMembership) {
+        const description =
+          existingMembership?.membershipId &&
+          existingMembership.membershipId !== selectedMembership.id
+            ? `회원권 변경 (${formatMembershipLabel(selectedMembership)})`
+            : `회원권 부여 (${formatMembershipLabel(selectedMembership)})`;
+        await createMemberActivity(transaction, {
+          memberId: id,
+          type: "membership_assigned",
+          description,
+          metadata: {
+            membershipId: selectedMembership.id,
+            duration: selectedMembership.duration,
+            weeklyAttendance: selectedMembership.weeklyAttendance,
+            price: selectedMembership.price,
+          },
+        });
+      }
     }
   });
 
@@ -179,6 +271,12 @@ export const deleteMember = async (formData: FormData) => {
     },
   });
 
+  await createMemberActivity(prisma, {
+    memberId: id,
+    type: "member_deactivated",
+    description: "회원 중지",
+  });
+
   revalidatePath("/");
 };
 
@@ -194,6 +292,12 @@ export const restoreMember = async (formData: FormData) => {
     data: {
       status: "ACTIVE",
     },
+  });
+
+  await createMemberActivity(prisma, {
+    memberId: id,
+    type: "member_restored",
+    description: "회원 복구",
   });
 
   revalidatePath("/");
@@ -218,6 +322,12 @@ export const pauseMemberMembership = async (formData: FormData) => {
   await prisma.memberMembership.update({
     where: { memberId },
     data: { pausedAt: new Date() },
+  });
+
+  await createMemberActivity(prisma, {
+    memberId,
+    type: "membership_paused",
+    description: "회원권 일시정지",
   });
 
   revalidatePath("/");
@@ -275,6 +385,15 @@ export const resumeMemberMembership = async (formData: FormData) => {
         ? 0
         : memberMembership.totalPausedMs + pauseDurationMs,
       ...(nextExpiresAt ? { expiresAt: nextExpiresAt } : {}),
+    },
+  });
+
+  await createMemberActivity(prisma, {
+    memberId,
+    type: "membership_resumed",
+    description: "회원권 일시정지 해제",
+    metadata: {
+      pausedDurationMs: pauseDurationMs,
     },
   });
 
@@ -337,6 +456,20 @@ export const extendMemberMembership = async (formData: FormData) => {
     where: { memberId },
     data: {
       expiresAt: nextExpiry,
+    },
+  });
+
+  await createMemberActivity(prisma, {
+    memberId,
+    type: "membership_extended",
+    description: `회원권 만료일 연장 (${amount}${
+      unit === "month" ? "개월" : unit === "week" ? "주" : "일"
+    })`,
+    metadata: {
+      unit,
+      amount,
+      previousExpiry: baseExpiry.toISOString(),
+      nextExpiry: nextExpiry.toISOString(),
     },
   });
 

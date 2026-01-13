@@ -83,10 +83,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           include: {
             membership: true,
           },
+        },
+        activities: {
           orderBy: {
-            assignedAt: "desc",
+            createdAt: "desc",
           },
-          take: 1,
         },
       },
       orderBy: {
@@ -100,27 +101,41 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     }),
   ]);
 
-  const serializedMembers = members.map((member) => ({
-    id: member.id,
-    name: member.name,
-    phone: member.phone,
-    birthDate: member.birthDate ? member.birthDate.toISOString() : null,
-    gender: member.gender,
-    parentPhone: member.parentPhone,
-    memo: member.memo,
-    status: member.status,
-    membershipId: member.memberMemberships[0]?.membershipId ?? null,
-    membershipAssignedAt:
-      member.memberMemberships[0]?.assignedAt.toISOString() ?? null,
-    membershipExpiresAt:
-      member.memberMemberships[0]?.expiresAt?.toISOString() ?? null,
-    membershipDuration:
-      member.memberMemberships[0]?.membership?.duration ?? null,
-    membershipPausedAt:
-      member.memberMemberships[0]?.pausedAt?.toISOString() ?? null,
-    membershipTotalPausedMs: member.memberMemberships[0]?.totalPausedMs ?? 0,
-    createdAt: member.createdAt.toISOString(),
-  }));
+  const serializedMembers = members.map((member) => {
+    const latestMembership = member.memberMemberships.reduce(
+      (latest, current) =>
+        !latest || current.assignedAt > latest.assignedAt ? current : latest,
+      null as (typeof member.memberMemberships)[number] | null,
+    );
+    return {
+      id: member.id,
+      name: member.name,
+      phone: member.phone,
+      birthDate: member.birthDate ? member.birthDate.toISOString() : null,
+      gender: member.gender,
+      parentPhone: member.parentPhone,
+      memo: member.memo,
+      status: member.status,
+      membershipId: latestMembership?.membershipId ?? null,
+      membershipAssignedAt:
+        latestMembership?.assignedAt.toISOString() ?? null,
+      membershipExpiresAt:
+        latestMembership?.expiresAt?.toISOString() ?? null,
+      membershipDuration:
+        latestMembership?.membership?.duration ?? null,
+      membershipPausedAt:
+        latestMembership?.pausedAt?.toISOString() ?? null,
+      membershipTotalPausedMs: latestMembership?.totalPausedMs ?? 0,
+      activities: member.activities.map((activity) => ({
+        id: activity.id,
+        type: activity.type,
+        description: activity.description,
+        metadata: activity.metadata,
+        createdAt: activity.createdAt.toISOString(),
+      })),
+      createdAt: member.createdAt.toISOString(),
+    };
+  });
   const serializedMemberships = memberships.map((membership) => ({
     id: membership.id,
     duration: membership.duration,

@@ -28,6 +28,7 @@ type Member = {
   membershipDuration: number | null;
   membershipPausedAt: string | null;
   membershipTotalPausedMs: number;
+  activities: MemberActivity[];
   createdAt: string;
 };
 
@@ -37,6 +38,14 @@ type Membership = {
   weeklyAttendance: number;
   price: number;
   status: string;
+  createdAt: string;
+};
+
+type MemberActivity = {
+  id: number;
+  type: string;
+  description: string;
+  metadata: string | null;
   createdAt: string;
 };
 
@@ -123,6 +132,29 @@ const getStatusLabel = (
   };
 };
 
+const getActivityTypeLabel = (type: string) => {
+  switch (type) {
+    case "member_created":
+      return "회원 등록";
+    case "membership_assigned":
+      return "회원권 부여";
+    case "membership_revoked":
+      return "회원권 회수";
+    case "membership_paused":
+      return "일시정지";
+    case "membership_resumed":
+      return "일시정지 해제";
+    case "membership_extended":
+      return "만료일 연장";
+    case "member_deactivated":
+      return "회원 중지";
+    case "member_restored":
+      return "회원 복구";
+    default:
+      return "기타";
+  }
+};
+
 const formatDateInput = (birthDate: string | null) => {
   if (!birthDate) return "";
   const date = new Date(birthDate);
@@ -204,6 +236,7 @@ type EditableField =
   | "membershipExpiresAt";
 
 type ExpiryExtensionUnit = "month" | "week" | "day";
+const HISTORY_PAGE_SIZE = 5;
 
 const MemberPage = ({
   members,
@@ -241,6 +274,9 @@ const MemberPage = ({
   const [expiryExtensionUnit, setExpiryExtensionUnit] =
     useState<ExpiryExtensionUnit>("month");
   const [expiryExtensionAmount, setExpiryExtensionAmount] = useState(1);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
+  const [historyPage, setHistoryPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey | null;
     direction: "asc" | "desc";
@@ -346,6 +382,32 @@ const MemberPage = ({
     selectedMember?.membershipId && selectedMember?.status !== "DELETE",
   );
   const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
+  const historyTypes = useMemo(() => {
+    if (!selectedMember) {
+      return [];
+    }
+    const unique = new Set(selectedMember.activities.map((activity) => activity.type));
+    return Array.from(unique).sort();
+  }, [selectedMember]);
+  const filteredHistoryItems = useMemo(() => {
+    if (!selectedMember) {
+      return [];
+    }
+    if (historyTypeFilter === "all") {
+      return selectedMember.activities;
+    }
+    return selectedMember.activities.filter(
+      (activity) => activity.type === historyTypeFilter,
+    );
+  }, [historyTypeFilter, selectedMember]);
+  const historyTotalPages = Math.max(
+    1,
+    Math.ceil(filteredHistoryItems.length / HISTORY_PAGE_SIZE),
+  );
+  const pagedHistoryItems = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return filteredHistoryItems.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [filteredHistoryItems, historyPage]);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -427,6 +489,14 @@ const MemberPage = ({
 
   useEffect(() => {
     setEditingField(null);
+  }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (selectedMemberId === null) {
+      setIsHistoryOpen(false);
+    }
+    setHistoryTypeFilter("all");
+    setHistoryPage(1);
   }, [selectedMemberId]);
 
   useEffect(() => {
@@ -979,6 +1049,13 @@ const MemberPage = ({
             <div className="panel-header">
               <h2>회원 상세</h2>
               <div className="panel-actions">
+                <button
+                  className="button-primary button-history"
+                  type="button"
+                  onClick={() => setIsHistoryOpen(true)}
+                >
+                  변경 이력
+                </button>
                 {canPauseMembership && (
                   <button
                     className="button-secondary"
@@ -1592,6 +1669,112 @@ const MemberPage = ({
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isHistoryOpen && selectedMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal history-modal" role="dialog" aria-modal="true">
+            <div className="panel-header">
+              <div>
+                <h2>변경 이력</h2>
+                <p className="detail-helper">
+                  {selectedMember.name} · 총 {selectedMember.activities.length}건
+                </p>
+              </div>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setIsHistoryOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="history-filter">
+              <span className="detail-label">이력 유형</span>
+              <div className="history-filter-options">
+                <button
+                  className={
+                    historyTypeFilter === "all"
+                      ? "filter-chip is-active"
+                      : "filter-chip"
+                  }
+                  type="button"
+                  onClick={() => {
+                    setHistoryTypeFilter("all");
+                    setHistoryPage(1);
+                  }}
+                >
+                  전체
+                </button>
+                {historyTypes.map((type) => (
+                  <button
+                    key={type}
+                    className={
+                      historyTypeFilter === type
+                        ? "filter-chip is-active"
+                        : "filter-chip"
+                    }
+                    type="button"
+                    onClick={() => {
+                      setHistoryTypeFilter(type);
+                      setHistoryPage(1);
+                    }}
+                  >
+                    {getActivityTypeLabel(type)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredHistoryItems.length > 0 ? (
+              <>
+                <ul className="history-list">
+                  {pagedHistoryItems.map((activity) => (
+                    <li key={activity.id} className="history-item">
+                      <div className="history-item-header">
+                        <strong>{activity.description}</strong>
+                        <span className="history-item-tag">
+                          {getActivityTypeLabel(activity.type)}
+                        </span>
+                      </div>
+                      <span className="history-item-meta">
+                        {new Date(activity.createdAt).toLocaleString("ko-KR")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="history-pagination">
+                  <button
+                    className="button-ghost"
+                    type="button"
+                    onClick={() =>
+                      setHistoryPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={historyPage === 1}
+                  >
+                    이전
+                  </button>
+                  <span className="pagination-status">
+                    {historyPage} / {historyTotalPages}
+                  </span>
+                  <button
+                    className="button-ghost"
+                    type="button"
+                    onClick={() =>
+                      setHistoryPage((prev) =>
+                        Math.min(historyTotalPages, prev + 1),
+                      )
+                    }
+                    disabled={historyPage === historyTotalPages}
+                  >
+                    다음
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="detail-empty">선택한 유형의 이력이 없어요.</p>
+            )}
           </div>
         </div>
       )}

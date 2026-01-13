@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "MemberMembership" (
+CREATE TABLE IF NOT EXISTS "MemberMembership" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "memberId" INTEGER NOT NULL,
     "membershipId" INTEGER NOT NULL,
@@ -11,4 +11,4 @@ CREATE TABLE "MemberMembership" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MemberMembership_memberId_key" ON "MemberMembership"("memberId");
+CREATE UNIQUE INDEX IF NOT EXISTS "MemberMembership_memberId_key" ON "MemberMembership"("memberId");

@@ -177,7 +177,17 @@ const getRemainingDays = (
   if (Number.isNaN(effectiveNow.getTime())) {
     return null;
   }
-  const diffMs = baseExpiryDate.getTime() - effectiveNow.getTime();
+  const expiryDateUtc = Date.UTC(
+    baseExpiryDate.getFullYear(),
+    baseExpiryDate.getMonth(),
+    baseExpiryDate.getDate(),
+  );
+  const nowDateUtc = Date.UTC(
+    effectiveNow.getFullYear(),
+    effectiveNow.getMonth(),
+    effectiveNow.getDate(),
+  );
+  const diffMs = expiryDateUtc - nowDateUtc;
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 };

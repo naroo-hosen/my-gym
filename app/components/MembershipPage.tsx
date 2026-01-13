@@ -11,6 +11,7 @@ import {
 type Membership = {
   id: number;
   duration: number;
+  durationUnit: "MONTH" | "DAY";
   weeklyAttendance: number;
   price: number;
   status: string;
@@ -29,6 +30,9 @@ const getStatusLabel = (status: string) => {
   }
   return { label: "정상", isDeleted: false };
 };
+
+const formatDuration = (duration: number, unit: "MONTH" | "DAY") =>
+  `${duration}${unit === "DAY" ? "일" : "개월"}`;
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
@@ -140,7 +144,7 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
             <form action={handleCreateMembership}>
               <div className="grid">
                 <div>
-                  <label htmlFor="duration">유효기간 (개월)</label>
+                  <label htmlFor="duration">유효기간</label>
                   <input
                     id="duration"
                     name="duration"
@@ -150,6 +154,13 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                     placeholder="예: 1"
                     required
                   />
+                </div>
+                <div>
+                  <label htmlFor="durationUnit">유효기간 단위</label>
+                  <select id="durationUnit" name="durationUnit" defaultValue="MONTH">
+                    <option value="MONTH">개월</option>
+                    <option value="DAY">일</option>
+                  </select>
                 </div>
                 <div>
                   <label htmlFor="weeklyAttendance">
@@ -242,7 +253,12 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                       }
                     >
                       <td className="number">{membership.id}</td>
-                      <td>{membership.duration}개월</td>
+                      <td>
+                        {formatDuration(
+                          membership.duration,
+                          membership.durationUnit,
+                        )}
+                      </td>
                       <td>{membership.weeklyAttendance}회</td>
                       <td>{formatPrice(membership.price)}</td>
                       <td>
@@ -299,7 +315,12 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">유효기간</span>
-                <strong>{selectedMembership.duration}개월</strong>
+                <strong>
+                  {formatDuration(
+                    selectedMembership.duration,
+                    selectedMembership.durationUnit,
+                  )}
+                </strong>
               </div>
               <div className="detail-item">
                 <span className="detail-label">주간 출석 횟수</span>

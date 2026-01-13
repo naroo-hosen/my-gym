@@ -123,6 +123,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         latestMembership?.expiresAt?.toISOString() ?? null,
       membershipDuration:
         latestMembership?.membership?.duration ?? null,
+      membershipDurationUnit:
+        latestMembership?.membership?.durationUnit ?? null,
       membershipPausedAt:
         latestMembership?.pausedAt?.toISOString() ?? null,
       membershipTotalPausedMs: latestMembership?.totalPausedMs ?? 0,
@@ -139,6 +141,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const serializedMemberships = memberships.map((membership) => ({
     id: membership.id,
     duration: membership.duration,
+    durationUnit: membership.durationUnit,
     weeklyAttendance: membership.weeklyAttendance,
     price: membership.price,
     status: membership.status,

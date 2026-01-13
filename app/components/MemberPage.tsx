@@ -28,6 +28,7 @@ type Member = {
   membershipDuration: number | null;
   membershipPausedAt: string | null;
   membershipTotalPausedMs: number;
+  activities: MemberActivity[];
   createdAt: string;
 };
 
@@ -37,6 +38,14 @@ type Membership = {
   weeklyAttendance: number;
   price: number;
   status: string;
+  createdAt: string;
+};
+
+type MemberActivity = {
+  id: number;
+  type: string;
+  description: string;
+  metadata: string | null;
   createdAt: string;
 };
 
@@ -1458,6 +1467,28 @@ const MemberPage = ({
                     <span aria-hidden="true">✏️</span>
                   </button>
                 </div>
+              )}
+            </div>
+            <div className="detail-history">
+              <div className="detail-history-header">
+                <span className="detail-label">활동 이력</span>
+                <span className="detail-helper">최근 10건</span>
+              </div>
+              {selectedMember.activities.length > 0 ? (
+                <ul className="detail-history-list">
+                  {selectedMember.activities.map((activity) => (
+                    <li key={activity.id} className="detail-history-item">
+                      <div>
+                        <strong>{activity.description}</strong>
+                        <span className="detail-history-meta">
+                          {new Date(activity.createdAt).toLocaleString("ko-KR")}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="detail-empty">아직 이력이 없어요.</p>
               )}
             </div>
           </>

@@ -18,6 +18,7 @@ model Member {
   status            String             @default("ACTIVE")
   createdAt         DateTime           @default(now())
   memberMemberships MemberMembership[]
+  activities        MemberActivity[]
 }
 
 model Membership {
@@ -42,4 +43,16 @@ model MemberMembership {
   membership   Membership @relation(fields: [membershipId], references: [id])
 
   @@unique([memberId])
+}
+
+model MemberActivity {
+  id          Int      @id @default(autoincrement())
+  memberId    Int
+  type        String
+  description String
+  metadata    String?
+  createdAt   DateTime @default(now())
+  member      Member   @relation(fields: [memberId], references: [id])
+
+  @@index([memberId, createdAt])
 }

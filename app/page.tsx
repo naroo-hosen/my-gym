@@ -88,6 +88,12 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           },
           take: 1,
         },
+        activities: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 10,
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -119,6 +125,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     membershipPausedAt:
       member.memberMemberships[0]?.pausedAt?.toISOString() ?? null,
     membershipTotalPausedMs: member.memberMemberships[0]?.totalPausedMs ?? 0,
+    activities: member.activities.map((activity) => ({
+      id: activity.id,
+      type: activity.type,
+      description: activity.description,
+      metadata: activity.metadata,
+      createdAt: activity.createdAt.toISOString(),
+    })),
     createdAt: member.createdAt.toISOString(),
   }));
   const serializedMemberships = memberships.map((membership) => ({

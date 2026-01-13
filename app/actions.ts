@@ -281,6 +281,68 @@ export const resumeMemberMembership = async (formData: FormData) => {
   revalidatePath("/");
 };
 
+export const extendMemberMembership = async (formData: FormData) => {
+  const memberId = Number(formData.get("memberId"));
+  const unit = formData.get("unit")?.toString();
+  const amount = Number(formData.get("amount"));
+
+  if (
+    !memberId ||
+    !unit ||
+    !Number.isInteger(amount) ||
+    amount <= 0 ||
+    !["month", "week", "day"].includes(unit)
+  ) {
+    return;
+  }
+
+  const memberMembership = await prisma.memberMembership.findUnique({
+    where: { memberId },
+    select: {
+      expiresAt: true,
+      assignedAt: true,
+      membership: { select: { duration: true } },
+    },
+  });
+
+  if (!memberMembership) {
+    return;
+  }
+
+  const baseExpiry =
+    memberMembership.expiresAt ??
+    (memberMembership.membership?.duration
+      ? new Date(
+          new Date(memberMembership.assignedAt).setMonth(
+            memberMembership.assignedAt.getMonth() +
+              memberMembership.membership.duration,
+          ),
+        )
+      : null);
+
+  if (!baseExpiry) {
+    return;
+  }
+
+  const nextExpiry = new Date(baseExpiry);
+  if (unit === "month") {
+    nextExpiry.setMonth(nextExpiry.getMonth() + amount);
+  } else if (unit === "week") {
+    nextExpiry.setDate(nextExpiry.getDate() + amount * 7);
+  } else {
+    nextExpiry.setDate(nextExpiry.getDate() + amount);
+  }
+
+  await prisma.memberMembership.update({
+    where: { memberId },
+    data: {
+      expiresAt: nextExpiry,
+    },
+  });
+
+  revalidatePath("/");
+};
+
 export const createMembership = async (formData: FormData) => {
   const duration = Number(formData.get("duration"));
   const weeklyAttendance = Number(formData.get("weeklyAttendance"));

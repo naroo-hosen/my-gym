@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import { ensureMembershipExpiryBatch } from "@/lib/membershipExpiryBatch";
 
 export const metadata = {
   title: "My Gym CRM",
@@ -7,6 +8,8 @@ export const metadata = {
 };
 
 const RootLayout = ({ children }: { children: ReactNode }) => {
+  ensureMembershipExpiryBatch();
+
   return (
     <html lang="ko">
       <body>

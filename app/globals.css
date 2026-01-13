@@ -579,6 +579,21 @@ button {
   gap: 10px;
 }
 
+.detail-edit-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.detail-edit-row input[type="number"] {
+  max-width: 110px;
+}
+
+.detail-helper {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .membership-select {
   width: 100%;
   min-width: 320px;

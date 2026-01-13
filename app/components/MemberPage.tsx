@@ -236,6 +236,7 @@ type EditableField =
   | "membershipExpiresAt";
 
 type ExpiryExtensionUnit = "month" | "week" | "day";
+const HISTORY_PAGE_SIZE = 5;
 
 const MemberPage = ({
   members,
@@ -275,6 +276,7 @@ const MemberPage = ({
   const [expiryExtensionAmount, setExpiryExtensionAmount] = useState(1);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
+  const [historyPage, setHistoryPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey | null;
     direction: "asc" | "desc";
@@ -398,6 +400,14 @@ const MemberPage = ({
       (activity) => activity.type === historyTypeFilter,
     );
   }, [historyTypeFilter, selectedMember]);
+  const historyTotalPages = Math.max(
+    1,
+    Math.ceil(filteredHistoryItems.length / HISTORY_PAGE_SIZE),
+  );
+  const pagedHistoryItems = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return filteredHistoryItems.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [filteredHistoryItems, historyPage]);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -486,6 +496,7 @@ const MemberPage = ({
       setIsHistoryOpen(false);
     }
     setHistoryTypeFilter("all");
+    setHistoryPage(1);
   }, [selectedMemberId]);
 
   useEffect(() => {
@@ -1039,7 +1050,7 @@ const MemberPage = ({
               <h2>회원 상세</h2>
               <div className="panel-actions">
                 <button
-                  className="button-ghost"
+                  className="button-primary button-history"
                   type="button"
                   onClick={() => setIsHistoryOpen(true)}
                 >
@@ -1669,7 +1680,7 @@ const MemberPage = ({
               <div>
                 <h2>변경 이력</h2>
                 <p className="detail-helper">
-                  {selectedMember.name} · 최근 {selectedMember.activities.length}건
+                  {selectedMember.name} · 총 {selectedMember.activities.length}건
                 </p>
               </div>
               <button
@@ -1690,7 +1701,10 @@ const MemberPage = ({
                       : "filter-chip"
                   }
                   type="button"
-                  onClick={() => setHistoryTypeFilter("all")}
+                  onClick={() => {
+                    setHistoryTypeFilter("all");
+                    setHistoryPage(1);
+                  }}
                 >
                   전체
                 </button>
@@ -1703,7 +1717,10 @@ const MemberPage = ({
                         : "filter-chip"
                     }
                     type="button"
-                    onClick={() => setHistoryTypeFilter(type)}
+                    onClick={() => {
+                      setHistoryTypeFilter(type);
+                      setHistoryPage(1);
+                    }}
                   >
                     {getActivityTypeLabel(type)}
                   </button>
@@ -1711,21 +1728,50 @@ const MemberPage = ({
               </div>
             </div>
             {filteredHistoryItems.length > 0 ? (
-              <ul className="history-list">
-                {filteredHistoryItems.map((activity) => (
-                  <li key={activity.id} className="history-item">
-                    <div className="history-item-header">
-                      <strong>{activity.description}</strong>
-                      <span className="history-item-tag">
-                        {getActivityTypeLabel(activity.type)}
+              <>
+                <ul className="history-list">
+                  {pagedHistoryItems.map((activity) => (
+                    <li key={activity.id} className="history-item">
+                      <div className="history-item-header">
+                        <strong>{activity.description}</strong>
+                        <span className="history-item-tag">
+                          {getActivityTypeLabel(activity.type)}
+                        </span>
+                      </div>
+                      <span className="history-item-meta">
+                        {new Date(activity.createdAt).toLocaleString("ko-KR")}
                       </span>
-                    </div>
-                    <span className="history-item-meta">
-                      {new Date(activity.createdAt).toLocaleString("ko-KR")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+                <div className="history-pagination">
+                  <button
+                    className="button-ghost"
+                    type="button"
+                    onClick={() =>
+                      setHistoryPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={historyPage === 1}
+                  >
+                    이전
+                  </button>
+                  <span className="pagination-status">
+                    {historyPage} / {historyTotalPages}
+                  </span>
+                  <button
+                    className="button-ghost"
+                    type="button"
+                    onClick={() =>
+                      setHistoryPage((prev) =>
+                        Math.min(historyTotalPages, prev + 1),
+                      )
+                    }
+                    disabled={historyPage === historyTotalPages}
+                  >
+                    다음
+                  </button>
+                </div>
+              </>
             ) : (
               <p className="detail-empty">선택한 유형의 이력이 없어요.</p>
             )}

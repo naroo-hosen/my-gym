@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createMember,
   deleteMember,
+  extendMemberMembership,
   pauseMemberMembership,
   restoreMember,
   resumeMemberMembership,
@@ -199,7 +200,10 @@ type EditableField =
   | "gender"
   | "parentPhone"
   | "memo"
-  | "membershipId";
+  | "membershipId"
+  | "membershipExpiresAt";
+
+type ExpiryExtensionUnit = "month" | "week" | "day";
 
 const MemberPage = ({
   members,
@@ -234,6 +238,9 @@ const MemberPage = ({
   const [statusSelections, setStatusSelections] =
     useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
+  const [expiryExtensionUnit, setExpiryExtensionUnit] =
+    useState<ExpiryExtensionUnit>("month");
+  const [expiryExtensionAmount, setExpiryExtensionAmount] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey | null;
     direction: "asc" | "desc";
@@ -294,6 +301,21 @@ const MemberPage = ({
       selectedMember?.membershipAssignedAt,
       selectedMember?.membershipDuration,
       selectedMember?.membershipPausedAt,
+      selectedMember?.membershipTotalPausedMs,
+    ],
+  );
+  const selectedMembershipExpiryDate = useMemo(
+    () =>
+      resolveExpiryDate(
+        selectedMember?.membershipExpiresAt ?? null,
+        selectedMember?.membershipAssignedAt ?? null,
+        selectedMember?.membershipDuration ?? null,
+        selectedMember?.membershipTotalPausedMs ?? 0,
+      ),
+    [
+      selectedMember?.membershipExpiresAt,
+      selectedMember?.membershipAssignedAt,
+      selectedMember?.membershipDuration,
       selectedMember?.membershipTotalPausedMs,
     ],
   );
@@ -604,6 +626,10 @@ const MemberPage = ({
 
   const startEdit = (field: EditableField) => {
     setEditingField(field);
+    if (field === "membershipExpiresAt") {
+      setExpiryExtensionUnit("month");
+      setExpiryExtensionAmount(1);
+    }
   };
 
   const closeEdit = () => {
@@ -1303,16 +1329,86 @@ const MemberPage = ({
               </div>
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">만료일</span>
-                <strong>
-                  {selectedMember.membershipPausedAt
-                    ? "-"
-                    : resolveExpiryDate(
-                        selectedMember.membershipExpiresAt,
-                        selectedMember.membershipAssignedAt,
-                        selectedMember.membershipDuration,
-                        selectedMember.membershipTotalPausedMs,
-                      )?.toLocaleDateString("ko-KR") ?? "-"}
-                </strong>
+                {editingField === "membershipExpiresAt" ? (
+                  <form
+                    action={extendMemberMembership}
+                    className="detail-edit-form"
+                    onSubmit={closeEdit}
+                  >
+                    <input
+                      type="hidden"
+                      name="memberId"
+                      value={selectedMember.id}
+                    />
+                    <div className="detail-edit-row">
+                      <input
+                        name="amount"
+                        type="number"
+                        min={1}
+                        required
+                        value={expiryExtensionAmount}
+                        onChange={(event) =>
+                          setExpiryExtensionAmount(
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                      <select
+                        name="unit"
+                        value={expiryExtensionUnit}
+                        onChange={(event) =>
+                          setExpiryExtensionUnit(
+                            event.target.value as ExpiryExtensionUnit,
+                          )
+                        }
+                      >
+                        <option value="month">개월</option>
+                        <option value="week">주</option>
+                        <option value="day">일</option>
+                      </select>
+                    </div>
+                    <span className="detail-helper">
+                      현재 만료일:{" "}
+                      {selectedMembershipExpiryDate
+                        ? selectedMembershipExpiryDate.toLocaleDateString(
+                            "ko-KR",
+                          )
+                        : "-"}
+                    </span>
+                    <div className="detail-edit-actions">
+                      <button className="button-primary" type="submit">
+                        연장
+                      </button>
+                      <button
+                        className="button-ghost"
+                        type="button"
+                        onClick={closeEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="detail-value">
+                    <strong>
+                      {selectedMember.membershipPausedAt
+                        ? "-"
+                        : selectedMembershipExpiryDate?.toLocaleDateString(
+                              "ko-KR",
+                            ) ?? "-"}
+                    </strong>
+                    {selectedMember.membershipId ? (
+                      <button
+                        className="detail-edit-button"
+                        type="button"
+                        onClick={() => startEdit("membershipExpiresAt")}
+                        aria-label="만료일 연장"
+                      >
+                        <span aria-hidden="true">✏️</span>
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">남은 기간</span>

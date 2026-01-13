@@ -26,6 +26,7 @@ type Member = {
   membershipAssignedAt: string | null;
   membershipExpiresAt: string | null;
   membershipDuration: number | null;
+  membershipDurationUnit: "MONTH" | "DAY" | null;
   membershipPausedAt: string | null;
   membershipTotalPausedMs: number;
   activities: MemberActivity[];
@@ -35,6 +36,7 @@ type Member = {
 type Membership = {
   id: number;
   duration: number;
+  durationUnit: "MONTH" | "DAY";
   weeklyAttendance: number;
   price: number;
   status: string;
@@ -162,10 +164,16 @@ const formatDateInput = (birthDate: string | null) => {
   return date.toISOString().split("T")[0];
 };
 
+const formatMembershipDuration = (
+  duration: number,
+  unit: "MONTH" | "DAY",
+) => `${duration}${unit === "DAY" ? "일" : "개월"}`;
+
 const resolveExpiryDate = (
   expiresAt: string | null,
   assignedAt: string | null,
   durationMonths: number | null,
+  durationUnit: "MONTH" | "DAY" | null,
   totalPausedMs: number,
 ) => {
   if (expiresAt) {
@@ -185,7 +193,12 @@ const resolveExpiryDate = (
     return null;
   }
   const derivedExpiry = new Date(startDate);
-  derivedExpiry.setMonth(derivedExpiry.getMonth() + durationMonths);
+  if (durationUnit === "DAY") {
+    derivedExpiry.setDate(derivedExpiry.getDate() + Math.max(durationMonths - 1, 0));
+    derivedExpiry.setHours(23, 59, 59, 999);
+  } else {
+    derivedExpiry.setMonth(derivedExpiry.getMonth() + durationMonths);
+  }
   derivedExpiry.setTime(derivedExpiry.getTime() + totalPausedMs);
   return derivedExpiry;
 };
@@ -194,6 +207,7 @@ const getRemainingDays = (
   expiresAt: string | null,
   assignedAt: string | null,
   durationMonths: number | null,
+  durationUnit: "MONTH" | "DAY" | null,
   totalPausedMs: number,
   pausedAt: string | null,
 ) => {
@@ -201,6 +215,7 @@ const getRemainingDays = (
     expiresAt,
     assignedAt,
     durationMonths,
+    durationUnit,
     totalPausedMs,
   );
   if (!baseExpiryDate) {
@@ -287,7 +302,12 @@ const MemberPage = ({
         .filter((membership) => membership.status !== "DELETE")
         .map((membership) => ({
           id: membership.id,
-          label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
+          label: `${formatMembershipDuration(
+            membership.duration,
+            membership.durationUnit,
+          )} · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString(
+            "ko-KR",
+          )}원`,
         })),
     [memberships],
   );
@@ -295,7 +315,12 @@ const MemberPage = ({
     () =>
       memberships.map((membership) => ({
         id: membership.id,
-        label: `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString("ko-KR")}원`,
+        label: `${formatMembershipDuration(
+          membership.duration,
+          membership.durationUnit,
+        )} · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString(
+          "ko-KR",
+        )}원`,
       })),
     [memberships],
   );
@@ -329,6 +354,7 @@ const MemberPage = ({
         selectedMember?.membershipExpiresAt ?? null,
         selectedMember?.membershipAssignedAt ?? null,
         selectedMember?.membershipDuration ?? null,
+        selectedMember?.membershipDurationUnit ?? null,
         selectedMember?.membershipTotalPausedMs ?? 0,
         selectedMember?.membershipPausedAt ?? null,
       ),
@@ -336,6 +362,7 @@ const MemberPage = ({
       selectedMember?.membershipExpiresAt,
       selectedMember?.membershipAssignedAt,
       selectedMember?.membershipDuration,
+      selectedMember?.membershipDurationUnit,
       selectedMember?.membershipPausedAt,
       selectedMember?.membershipTotalPausedMs,
     ],
@@ -346,12 +373,14 @@ const MemberPage = ({
         selectedMember?.membershipExpiresAt ?? null,
         selectedMember?.membershipAssignedAt ?? null,
         selectedMember?.membershipDuration ?? null,
+        selectedMember?.membershipDurationUnit ?? null,
         selectedMember?.membershipTotalPausedMs ?? 0,
       ),
     [
       selectedMember?.membershipExpiresAt,
       selectedMember?.membershipAssignedAt,
       selectedMember?.membershipDuration,
+      selectedMember?.membershipDurationUnit,
       selectedMember?.membershipTotalPausedMs,
     ],
   );
@@ -455,6 +484,7 @@ const MemberPage = ({
               member.membershipExpiresAt,
               member.membershipAssignedAt,
               member.membershipDuration,
+              member.membershipDurationUnit,
               member.membershipTotalPausedMs,
             );
             return expiryDate ? expiryDate.getTime() : null;
@@ -966,6 +996,7 @@ const MemberPage = ({
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipDurationUnit,
                     member.membershipTotalPausedMs,
                   );
                   const expiresAtLabel =
@@ -976,6 +1007,7 @@ const MemberPage = ({
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
                     member.membershipDuration,
+                    member.membershipDurationUnit,
                     member.membershipTotalPausedMs,
                     member.membershipPausedAt,
                   );

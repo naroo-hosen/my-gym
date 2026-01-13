@@ -11,14 +11,39 @@ type MemberActivityPayload = {
   metadata?: Record<string, unknown>;
 };
 
+type MembershipDurationUnit = "MONTH" | "DAY";
+
+const formatMembershipDuration = (
+  duration: number,
+  unit: MembershipDurationUnit,
+) => `${duration}${unit === "DAY" ? "일" : "개월"}`;
+
 const formatMembershipLabel = (membership: {
   duration: number;
+  durationUnit: MembershipDurationUnit;
   weeklyAttendance: number;
   price: number;
 }) =>
-  `${membership.duration}개월 · 주 ${membership.weeklyAttendance}회 · ${membership.price.toLocaleString(
-    "ko-KR",
-  )}원`;
+  `${formatMembershipDuration(membership.duration, membership.durationUnit)} · 주 ${
+    membership.weeklyAttendance
+  }회 · ${membership.price.toLocaleString("ko-KR")}원`;
+
+const getMembershipExpiryDate = (
+  assignedAt: Date,
+  duration: number,
+  durationUnit: MembershipDurationUnit,
+) => {
+  const expiresAt = new Date(assignedAt);
+
+  if (durationUnit === "DAY") {
+    expiresAt.setDate(expiresAt.getDate() + Math.max(duration - 1, 0));
+    expiresAt.setHours(23, 59, 59, 999);
+    return expiresAt;
+  }
+
+  expiresAt.setMonth(expiresAt.getMonth() + duration);
+  return expiresAt;
+};
 
 type PrismaClientLike = Prisma.TransactionClient | typeof prisma;
 
@@ -147,10 +172,12 @@ export const updateMember = async (formData: FormData) => {
   }
 
   let membershipDuration: number | null = null;
+  let membershipDurationUnit: MembershipDurationUnit | null = null;
   let selectedMembership:
     | {
         id: number;
         duration: number;
+        durationUnit: MembershipDurationUnit;
         weeklyAttendance: number;
         price: number;
       }
@@ -163,12 +190,20 @@ export const updateMember = async (formData: FormData) => {
           not: "DELETE",
         },
       },
-      select: { id: true, duration: true, weeklyAttendance: true, price: true },
+      select: {
+        id: true,
+        duration: true,
+        durationUnit: true,
+        weeklyAttendance: true,
+        price: true,
+      },
     });
     if (!membership) {
       return;
     }
     membershipDuration = membership.duration;
+    membershipDurationUnit =
+      membership.durationUnit === "DAY" ? "DAY" : "MONTH";
     selectedMembership = membership;
   }
 
@@ -190,7 +225,12 @@ export const updateMember = async (formData: FormData) => {
       if (existingMembership?.membershipId) {
         const previousMembership = await transaction.membership.findUnique({
           where: { id: existingMembership.membershipId },
-          select: { duration: true, weeklyAttendance: true, price: true },
+          select: {
+            duration: true,
+            durationUnit: true,
+            weeklyAttendance: true,
+            price: true,
+          },
         });
         await transaction.memberMembership.deleteMany({
           where: { memberId: id },
@@ -205,6 +245,7 @@ export const updateMember = async (formData: FormData) => {
             ? {
                 membershipId: existingMembership.membershipId,
                 duration: previousMembership.duration,
+                durationUnit: previousMembership.durationUnit,
                 weeklyAttendance: previousMembership.weeklyAttendance,
                 price: previousMembership.price,
               }
@@ -213,10 +254,17 @@ export const updateMember = async (formData: FormData) => {
       }
     }
 
-    if (membershipSelection?.type === "assign" && membershipDuration) {
+    if (
+      membershipSelection?.type === "assign" &&
+      membershipDuration &&
+      membershipDurationUnit
+    ) {
       const assignedAt = new Date();
-      const expiresAt = new Date(assignedAt);
-      expiresAt.setMonth(expiresAt.getMonth() + membershipDuration);
+      const expiresAt = getMembershipExpiryDate(
+        assignedAt,
+        membershipDuration,
+        membershipDurationUnit,
+      );
       await transaction.memberMembership.upsert({
         where: { memberId: id },
         update: {
@@ -246,6 +294,7 @@ export const updateMember = async (formData: FormData) => {
           metadata: {
             membershipId: selectedMembership.id,
             duration: selectedMembership.duration,
+            durationUnit: selectedMembership.durationUnit,
             weeklyAttendance: selectedMembership.weeklyAttendance,
             price: selectedMembership.price,
           },
@@ -348,7 +397,7 @@ export const resumeMemberMembership = async (formData: FormData) => {
       expiresAt: true,
       assignedAt: true,
       membership: {
-        select: { duration: true },
+        select: { duration: true, durationUnit: true },
       },
     },
   });
@@ -362,11 +411,10 @@ export const resumeMemberMembership = async (formData: FormData) => {
   const baseExpiry =
     memberMembership.expiresAt ??
     (memberMembership.membership?.duration
-      ? new Date(
-          new Date(memberMembership.assignedAt).setMonth(
-            memberMembership.assignedAt.getMonth() +
-              memberMembership.membership.duration,
-          ),
+      ? getMembershipExpiryDate(
+          memberMembership.assignedAt,
+          memberMembership.membership.duration,
+          memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
         )
       : null);
   const nextExpiresAt = baseExpiry
@@ -420,7 +468,7 @@ export const extendMemberMembership = async (formData: FormData) => {
     select: {
       expiresAt: true,
       assignedAt: true,
-      membership: { select: { duration: true } },
+      membership: { select: { duration: true, durationUnit: true } },
     },
   });
 
@@ -431,11 +479,10 @@ export const extendMemberMembership = async (formData: FormData) => {
   const baseExpiry =
     memberMembership.expiresAt ??
     (memberMembership.membership?.duration
-      ? new Date(
-          new Date(memberMembership.assignedAt).setMonth(
-            memberMembership.assignedAt.getMonth() +
-              memberMembership.membership.duration,
-          ),
+      ? getMembershipExpiryDate(
+          memberMembership.assignedAt,
+          memberMembership.membership.duration,
+          memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
         )
       : null);
 
@@ -478,6 +525,11 @@ export const extendMemberMembership = async (formData: FormData) => {
 
 export const createMembership = async (formData: FormData) => {
   const duration = Number(formData.get("duration"));
+  const rawDurationUnit = formData.get("durationUnit")?.toString();
+  const durationUnit =
+    rawDurationUnit === "DAY" || rawDurationUnit === "MONTH"
+      ? rawDurationUnit
+      : "MONTH";
   const weeklyAttendance = Number(formData.get("weeklyAttendance"));
   const price = Number(formData.get("price"));
 
@@ -493,6 +545,7 @@ export const createMembership = async (formData: FormData) => {
   await prisma.membership.create({
     data: {
       duration,
+      durationUnit,
       weeklyAttendance,
       price,
     },

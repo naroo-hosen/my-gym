@@ -88,7 +88,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           orderBy: {
             createdAt: "desc",
           },
-          take: 10,
+          take: 50,
         },
       },
       orderBy: {

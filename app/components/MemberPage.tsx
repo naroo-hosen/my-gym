@@ -132,6 +132,29 @@ const getStatusLabel = (
   };
 };
 
+const getActivityTypeLabel = (type: string) => {
+  switch (type) {
+    case "member_created":
+      return "회원 등록";
+    case "membership_assigned":
+      return "회원권 부여";
+    case "membership_revoked":
+      return "회원권 회수";
+    case "membership_paused":
+      return "일시정지";
+    case "membership_resumed":
+      return "일시정지 해제";
+    case "membership_extended":
+      return "만료일 연장";
+    case "member_deactivated":
+      return "회원 중지";
+    case "member_restored":
+      return "회원 복구";
+    default:
+      return "기타";
+  }
+};
+
 const formatDateInput = (birthDate: string | null) => {
   if (!birthDate) return "";
   const date = new Date(birthDate);
@@ -250,6 +273,8 @@ const MemberPage = ({
   const [expiryExtensionUnit, setExpiryExtensionUnit] =
     useState<ExpiryExtensionUnit>("month");
   const [expiryExtensionAmount, setExpiryExtensionAmount] = useState(1);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey | null;
     direction: "asc" | "desc";
@@ -355,6 +380,24 @@ const MemberPage = ({
     selectedMember?.membershipId && selectedMember?.status !== "DELETE",
   );
   const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
+  const historyTypes = useMemo(() => {
+    if (!selectedMember) {
+      return [];
+    }
+    const unique = new Set(selectedMember.activities.map((activity) => activity.type));
+    return Array.from(unique).sort();
+  }, [selectedMember]);
+  const filteredHistoryItems = useMemo(() => {
+    if (!selectedMember) {
+      return [];
+    }
+    if (historyTypeFilter === "all") {
+      return selectedMember.activities;
+    }
+    return selectedMember.activities.filter(
+      (activity) => activity.type === historyTypeFilter,
+    );
+  }, [historyTypeFilter, selectedMember]);
   const handleStopClick = () => {
     if (!selectedMember) {
       return;
@@ -436,6 +479,13 @@ const MemberPage = ({
 
   useEffect(() => {
     setEditingField(null);
+  }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (selectedMemberId === null) {
+      setIsHistoryOpen(false);
+    }
+    setHistoryTypeFilter("all");
   }, [selectedMemberId]);
 
   useEffect(() => {
@@ -988,6 +1038,13 @@ const MemberPage = ({
             <div className="panel-header">
               <h2>회원 상세</h2>
               <div className="panel-actions">
+                <button
+                  className="button-ghost"
+                  type="button"
+                  onClick={() => setIsHistoryOpen(true)}
+                >
+                  변경 이력
+                </button>
                 {canPauseMembership && (
                   <button
                     className="button-secondary"
@@ -1469,28 +1526,6 @@ const MemberPage = ({
                 </div>
               )}
             </div>
-            <div className="detail-history">
-              <div className="detail-history-header">
-                <span className="detail-label">활동 이력</span>
-                <span className="detail-helper">최근 10건</span>
-              </div>
-              {selectedMember.activities.length > 0 ? (
-                <ul className="detail-history-list">
-                  {selectedMember.activities.map((activity) => (
-                    <li key={activity.id} className="detail-history-item">
-                      <div>
-                        <strong>{activity.description}</strong>
-                        <span className="detail-history-meta">
-                          {new Date(activity.createdAt).toLocaleString("ko-KR")}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="detail-empty">아직 이력이 없어요.</p>
-              )}
-            </div>
           </>
         )}
       </section>
@@ -1623,6 +1658,77 @@ const MemberPage = ({
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isHistoryOpen && selectedMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal history-modal" role="dialog" aria-modal="true">
+            <div className="panel-header">
+              <div>
+                <h2>변경 이력</h2>
+                <p className="detail-helper">
+                  {selectedMember.name} · 최근 {selectedMember.activities.length}건
+                </p>
+              </div>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setIsHistoryOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="history-filter">
+              <span className="detail-label">이력 유형</span>
+              <div className="history-filter-options">
+                <button
+                  className={
+                    historyTypeFilter === "all"
+                      ? "filter-chip is-active"
+                      : "filter-chip"
+                  }
+                  type="button"
+                  onClick={() => setHistoryTypeFilter("all")}
+                >
+                  전체
+                </button>
+                {historyTypes.map((type) => (
+                  <button
+                    key={type}
+                    className={
+                      historyTypeFilter === type
+                        ? "filter-chip is-active"
+                        : "filter-chip"
+                    }
+                    type="button"
+                    onClick={() => setHistoryTypeFilter(type)}
+                  >
+                    {getActivityTypeLabel(type)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredHistoryItems.length > 0 ? (
+              <ul className="history-list">
+                {filteredHistoryItems.map((activity) => (
+                  <li key={activity.id} className="history-item">
+                    <div className="history-item-header">
+                      <strong>{activity.description}</strong>
+                      <span className="history-item-tag">
+                        {getActivityTypeLabel(activity.type)}
+                      </span>
+                    </div>
+                    <span className="history-item-meta">
+                      {new Date(activity.createdAt).toLocaleString("ko-KR")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="detail-empty">선택한 유형의 이력이 없어요.</p>
+            )}
           </div>
         </div>
       )}

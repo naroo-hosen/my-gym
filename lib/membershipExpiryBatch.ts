@@ -61,8 +61,95 @@ const makeDateInTimeZone = (
   return new Date(utcGuess - offset);
 };
 
+const getMembershipExpiryDate = (
+  assignedAt: Date,
+  duration: number,
+  durationUnit: string,
+) => {
+  const nextExpiry = new Date(assignedAt);
+  if (durationUnit === "DAY") {
+    nextExpiry.setDate(nextExpiry.getDate() + duration);
+    return nextExpiry;
+  }
+
+  const durationMonths = Math.max(0, duration);
+  const nextMonth = nextExpiry.getMonth() + durationMonths;
+  nextExpiry.setMonth(nextMonth);
+
+  if (nextExpiry.getMonth() !== ((nextMonth % 12) + 12) % 12) {
+    nextExpiry.setDate(0);
+  }
+
+  return nextExpiry;
+};
+
+const resumePausedMemberships = async (now: Date) => {
+  const pausedMemberships = await prisma.memberMembership.findMany({
+    where: {
+      pausedAt: { not: null },
+      pauseEndsAt: { not: null, lte: now },
+    },
+    include: {
+      membership: { select: { duration: true, durationUnit: true } },
+    },
+  });
+
+  if (!pausedMemberships.length) {
+    return;
+  }
+
+  await prisma.$transaction(
+    pausedMemberships.map((memberMembership) => {
+      const pausedAt = memberMembership.pausedAt;
+      const pauseEndsAt = memberMembership.pauseEndsAt;
+
+      if (!pausedAt || !pauseEndsAt) {
+        return prisma.memberMembership.update({
+          where: { id: memberMembership.id },
+          data: { pausedAt: null, pauseEndsAt: null },
+        });
+      }
+
+      const pauseDurationMs = Math.max(
+        0,
+        pauseEndsAt.getTime() - pausedAt.getTime(),
+      );
+      const baseExpiry =
+        memberMembership.expiresAt ??
+        (memberMembership.membership?.duration
+          ? getMembershipExpiryDate(
+              memberMembership.assignedAt,
+              memberMembership.membership.duration,
+              memberMembership.membership.durationUnit,
+            )
+          : null);
+      const nextExpiresAt = baseExpiry
+        ? new Date(
+            baseExpiry.getTime() +
+              memberMembership.totalPausedMs +
+              pauseDurationMs,
+          )
+        : null;
+
+      return prisma.memberMembership.update({
+        where: { id: memberMembership.id },
+        data: {
+          pausedAt: null,
+          pauseEndsAt: null,
+          totalPausedMs: nextExpiresAt
+            ? 0
+            : memberMembership.totalPausedMs + pauseDurationMs,
+          ...(nextExpiresAt ? { expiresAt: nextExpiresAt } : {}),
+        },
+      });
+    }),
+  );
+};
+
 const runMembershipExpiryBatch = async () => {
   const now = new Date();
+
+  await resumePausedMemberships(now);
 
   await prisma.memberMembership.deleteMany({
     where: {

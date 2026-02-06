@@ -28,6 +28,7 @@ type Member = {
   membershipDuration: number | null;
   membershipDurationUnit: "MONTH" | "DAY" | null;
   membershipPausedAt: string | null;
+  membershipPauseEndsAt: string | null;
   membershipTotalPausedMs: number;
   activities: MemberActivity[];
   createdAt: string;
@@ -1527,6 +1528,16 @@ const MemberPage = ({
                     : "-"}
                 </strong>
               </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">일시정지 종료일</span>
+                <strong>
+                  {selectedMember.membershipPauseEndsAt
+                    ? new Date(
+                        selectedMember.membershipPauseEndsAt,
+                      ).toLocaleDateString("ko-KR")
+                    : "-"}
+                </strong>
+              </div>
             </div>
             <div className="detail-memo">
               <span className="detail-label">메모</span>
@@ -1630,6 +1641,12 @@ const MemberPage = ({
                   name="memberId"
                   value={pendingPauseMember.id}
                 />
+                {!pendingPauseMember.membershipPausedAt ? (
+                  <label className="modal-field">
+                    <span>일시정지 종료일(선택)</span>
+                    <input type="date" name="pauseEndsAt" />
+                  </label>
+                ) : null}
                 <button className="button-primary" type="submit">
                   확인
                 </button>

@@ -63,9 +63,14 @@ const formatDayLabel = (date: Date) =>
 const formatMembershipDuration = (
   duration: number | null,
   unit: "MONTH" | "DAY" | null,
+  weeklyAttendance: number | null,
 ) => {
   if (!duration || !unit) return "-";
-  return `${duration}${unit === "DAY" ? "일" : "개월"}`;
+  const durationLabel = `${duration}${unit === "DAY" ? "일" : "개월"}`;
+  if (weeklyAttendance === null) {
+    return durationLabel;
+  }
+  return `${durationLabel} (${weeklyAttendance}회)`;
 };
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
@@ -125,7 +130,6 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             <div className="attendance-cell">이름</div>
             <div className="attendance-cell">연락처</div>
             <div className="attendance-cell">회원권</div>
-            <div className="attendance-cell">회원권 등록 횟수</div>
           </div>
           {members.map((member) => (
             <div key={member.id} className="attendance-row">
@@ -135,12 +139,8 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 {formatMembershipDuration(
                   member.membershipDuration,
                   member.membershipDurationUnit,
+                  member.membershipWeeklyAttendance,
                 )}
-              </div>
-              <div className="attendance-cell">
-                {member.membershipWeeklyAttendance === null
-                  ? "-"
-                  : `${member.membershipWeeklyAttendance}회`}
               </div>
             </div>
           ))}

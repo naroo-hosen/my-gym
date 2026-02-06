@@ -272,6 +272,7 @@ export const updateMember = async (formData: FormData) => {
           assignedAt,
           expiresAt,
           pausedAt: null,
+          pauseEndsAt: null,
           totalPausedMs: 0,
         },
         create: {
@@ -354,6 +355,7 @@ export const restoreMember = async (formData: FormData) => {
 
 export const pauseMemberMembership = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
+  const pauseEndsAtValue = formData.get("pauseEndsAt")?.toString().trim();
 
   if (!memberId) {
     return;
@@ -368,9 +370,16 @@ export const pauseMemberMembership = async (formData: FormData) => {
     return;
   }
 
+  const pauseEndsAt = pauseEndsAtValue
+    ? new Date(`${pauseEndsAtValue}T00:00:00`)
+    : null;
+  if (pauseEndsAt && Number.isNaN(pauseEndsAt.getTime())) {
+    return;
+  }
+
   await prisma.memberMembership.update({
     where: { memberId },
-    data: { pausedAt: new Date() },
+    data: { pausedAt: new Date(), pauseEndsAt },
   });
 
   await createMemberActivity(prisma, {
@@ -429,6 +438,7 @@ export const resumeMemberMembership = async (formData: FormData) => {
     where: { memberId },
     data: {
       pausedAt: null,
+      pauseEndsAt: null,
       totalPausedMs: nextExpiresAt
         ? 0
         : memberMembership.totalPausedMs + pauseDurationMs,

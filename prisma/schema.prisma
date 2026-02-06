@@ -39,6 +39,7 @@ model MemberMembership {
   assignedAt   DateTime   @default(now())
   expiresAt    DateTime?
   pausedAt     DateTime?
+  pauseEndsAt  DateTime?
   totalPausedMs Int       @default(0)
   member       Member     @relation(fields: [memberId], references: [id])
   membership   Membership @relation(fields: [membershipId], references: [id])

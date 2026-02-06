@@ -127,6 +127,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         latestMembership?.membership?.durationUnit ?? null,
       membershipPausedAt:
         latestMembership?.pausedAt?.toISOString() ?? null,
+      membershipPauseEndsAt:
+        latestMembership?.pauseEndsAt?.toISOString() ?? null,
       membershipTotalPausedMs: latestMembership?.totalPausedMs ?? 0,
       activities: member.activities.map((activity) => ({
         id: activity.id,

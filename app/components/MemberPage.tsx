@@ -515,6 +515,9 @@ const MemberPage = ({
         alert("이번 주 출석 가능 횟수를 초과했습니다");
         return;
       }
+      if (result?.status === "ok") {
+        alert("출석체크가 완료되었습니다");
+      }
       router.refresh();
     });
   };

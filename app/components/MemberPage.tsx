@@ -389,9 +389,22 @@ const MemberPage = ({
       return 0;
     }
     const { start, end } = getWeekRange();
-    const assignedAt = selectedMember.membershipAssignedAt
-      ? new Date(selectedMember.membershipAssignedAt)
-      : null;
+    const latestMembershipAssignedAt = selectedMember.activities
+      .filter((activity) => activity.type === "membership_assigned")
+      .reduce<Date | null>((latest, activity) => {
+        const createdAt = new Date(activity.createdAt);
+        if (Number.isNaN(createdAt.getTime())) {
+          return latest;
+        }
+        if (!latest || createdAt > latest) {
+          return createdAt;
+        }
+        return latest;
+      }, null);
+    const assignedAt = latestMembershipAssignedAt ??
+      (selectedMember.membershipAssignedAt
+        ? new Date(selectedMember.membershipAssignedAt)
+        : null);
     return selectedMember.activities.filter((activity) => {
       if (activity.type !== "attendance_checked") {
         return false;

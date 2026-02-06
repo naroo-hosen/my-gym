@@ -623,7 +623,19 @@ export const checkInMember = async (formData: FormData) => {
   }
 
   const { start, end } = getWeekRange();
-  const assignedAt = memberMembership.assignedAt;
+  const latestMembershipAssigned = await prisma.memberActivity.findFirst({
+    where: {
+      memberId,
+      type: "membership_assigned",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+  const assignedAt = latestMembershipAssigned?.createdAt ?? memberMembership.assignedAt;
   const attendanceCount = await prisma.memberActivity.count({
     where: {
       memberId,

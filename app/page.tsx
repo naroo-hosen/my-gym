@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import AttendancePage from "@/app/components/AttendancePage";
 import MemberPage from "@/app/components/MemberPage";
 import MembershipPage from "@/app/components/MembershipPage";
 import Sidebar from "@/app/components/Sidebar";
@@ -17,7 +18,12 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const searchTerm =
     typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
   const searchField = searchParams?.field === "phone" ? "phone" : "name";
-  const section = searchParams?.section === "membership" ? "membership" : "member";
+  const section =
+    searchParams?.section === "membership"
+      ? "membership"
+      : searchParams?.section === "attendance"
+        ? "attendance"
+        : "member";
   const membershipFilter =
     searchParams?.membership === "with" || searchParams?.membership === "without"
       ? searchParams.membership
@@ -61,7 +67,12 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       })
     : [];
 
-  const [members, memberships] = await Promise.all([
+  const isAttendanceSection = section === "attendance";
+  const attendanceStart = new Date();
+  attendanceStart.setHours(0, 0, 0, 0);
+  attendanceStart.setDate(attendanceStart.getDate() - 13);
+
+  const [members, memberships, attendanceMembers] = await Promise.all([
     prisma.member.findMany({
       where: {
         ...(searchTerm
@@ -99,6 +110,39 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         createdAt: "desc",
       },
     }),
+    isAttendanceSection
+      ? prisma.member.findMany({
+          where: {
+            status: "ACTIVE",
+            memberMemberships: {
+              some: {
+                pausedAt: null,
+              },
+            },
+          },
+          include: {
+            memberMemberships: {
+              include: {
+                membership: true,
+              },
+            },
+            activities: {
+              where: {
+                type: "attendance_checked",
+                createdAt: {
+                  gte: attendanceStart,
+                },
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+            },
+          },
+          orderBy: {
+            name: "asc",
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const serializedMembers = members.map((member) => {
@@ -142,6 +186,24 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       createdAt: member.createdAt.toISOString(),
     };
   });
+  const serializedAttendanceMembers = attendanceMembers.map((member) => {
+    const activeMembership = member.memberMemberships[0];
+    return {
+      id: member.id,
+      name: member.name,
+      phone: member.phone,
+      membershipDuration: activeMembership?.membership?.duration ?? null,
+      membershipDurationUnit:
+        activeMembership?.membership?.durationUnit ?? null,
+      membershipWeeklyAttendance:
+        activeMembership?.membership?.weeklyAttendance ?? null,
+      membershipAssignedAt:
+        activeMembership?.assignedAt.toISOString() ?? null,
+      activities: member.activities.map((activity) => ({
+        createdAt: activity.createdAt.toISOString(),
+      })),
+    };
+  });
   const serializedMemberships = memberships.map((membership) => ({
     id: membership.id,
     duration: membership.duration,
@@ -158,6 +220,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
 
       {section === "membership" ? (
         <MembershipPage memberships={serializedMemberships} />
+      ) : section === "attendance" ? (
+        <AttendancePage members={serializedAttendanceMembers} />
       ) : (
         <MemberPage
           members={serializedMembers}

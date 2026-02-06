@@ -77,7 +77,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             <div className="attendance-cell">이름</div>
             <div className="attendance-cell">연락처</div>
             <div className="attendance-cell">회원권</div>
-            <div className="attendance-cell">회원권 주간횟수</div>
+            <div className="attendance-cell">회원권 등록 횟수</div>
           </div>
           {members.map((member) => (
             <div key={member.id} className="attendance-row">

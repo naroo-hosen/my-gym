@@ -45,6 +45,42 @@ const getMembershipExpiryDate = (
   return expiresAt;
 };
 
+const getAdjustedExpiryDate = (
+  memberMembership: {
+    assignedAt: Date;
+    expiresAt: Date | null;
+    totalPausedMs: number;
+    membership: { duration: number; durationUnit: MembershipDurationUnit } | null;
+  },
+) => {
+  const baseExpiry =
+    memberMembership.expiresAt ??
+    (memberMembership.membership?.duration
+      ? getMembershipExpiryDate(
+          memberMembership.assignedAt,
+          memberMembership.membership.duration,
+          memberMembership.membership.durationUnit,
+        )
+      : null);
+  if (!baseExpiry) {
+    return null;
+  }
+  const adjusted = new Date(baseExpiry);
+  adjusted.setTime(baseExpiry.getTime() + memberMembership.totalPausedMs);
+  return adjusted;
+};
+
+const getWeekRange = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  const day = start.getDay();
+  const diff = (day + 6) % 7;
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
+};
+
 type PrismaClientLike = Prisma.TransactionClient | typeof prisma;
 
 const createMemberActivity = async (
@@ -531,6 +567,89 @@ export const extendMemberMembership = async (formData: FormData) => {
   });
 
   revalidatePath("/");
+};
+
+export const checkInMember = async (formData: FormData) => {
+  const memberId = Number(formData.get("memberId"));
+
+  if (!memberId) {
+    return { status: "invalid" as const };
+  }
+
+  const memberMembership = await prisma.memberMembership.findUnique({
+    where: { memberId },
+    include: {
+      membership: true,
+      member: {
+        select: { status: true },
+      },
+    },
+  });
+
+  if (
+    !memberMembership ||
+    memberMembership.member.status === "DELETE" ||
+    !memberMembership.membership ||
+    memberMembership.membership.status === "DELETE" ||
+    memberMembership.pausedAt
+  ) {
+    return { status: "invalid" as const };
+  }
+
+  const expiryDate = getAdjustedExpiryDate({
+    assignedAt: memberMembership.assignedAt,
+    expiresAt: memberMembership.expiresAt,
+    totalPausedMs: memberMembership.totalPausedMs,
+    membership: memberMembership.membership
+      ? {
+          duration: memberMembership.membership.duration,
+          durationUnit:
+            memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
+        }
+      : null,
+  });
+
+  if (!expiryDate) {
+    return { status: "invalid" as const };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiryDateOnly = new Date(expiryDate);
+  expiryDateOnly.setHours(0, 0, 0, 0);
+
+  if (expiryDateOnly <= today) {
+    return { status: "expired" as const };
+  }
+
+  const { start, end } = getWeekRange();
+  const attendanceCount = await prisma.memberActivity.count({
+    where: {
+      memberId,
+      type: "attendance_checked",
+      createdAt: {
+        gte: start,
+        lt: end,
+      },
+    },
+  });
+
+  if (attendanceCount >= memberMembership.membership.weeklyAttendance) {
+    return { status: "limit" as const };
+  }
+
+  await createMemberActivity(prisma, {
+    memberId,
+    type: "attendance_checked",
+    description: "출석 체크",
+    metadata: {
+      weeklyAttendance: memberMembership.membership.weeklyAttendance,
+      attendanceCount: attendanceCount + 1,
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "ok" as const };
 };
 
 export const createMembership = async (formData: FormData) => {

@@ -419,6 +419,25 @@ const MemberPage = ({
     }).length;
   }, [selectedMember]);
   const weeklyAttendanceRemaining = weeklyAttendanceLimit - weeklyAttendanceCount;
+  const hasCheckedInToday = useMemo(() => {
+    if (!selectedMember) {
+      return false;
+    }
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    return selectedMember.activities.some((activity) => {
+      if (activity.type !== "attendance_checked") {
+        return false;
+      }
+      const createdAt = new Date(activity.createdAt);
+      if (Number.isNaN(createdAt.getTime())) {
+        return false;
+      }
+      return createdAt >= todayStart && createdAt < tomorrowStart;
+    });
+  }, [selectedMember]);
   const canCheckInMember = Boolean(
     selectedMember?.membershipId &&
       selectedMembershipRemainingDays !== null &&
@@ -523,12 +542,20 @@ const MemberPage = ({
       alert("이번 주 출석 가능 횟수를 초과했습니다");
       return;
     }
+    if (hasCheckedInToday) {
+      alert("오늘은 이미 출석체크를 완료했습니다");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("memberId", String(selectedMember.id));
 
     startTransition(async () => {
       const result = await checkInMember(formData);
+      if (result?.status === "already_checked") {
+        alert("오늘은 이미 출석체크를 완료했습니다");
+        return;
+      }
       if (result?.status === "limit") {
         alert("이번 주 출석 가능 횟수를 초과했습니다");
         return;

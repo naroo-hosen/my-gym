@@ -8,13 +8,23 @@ const Sidebar = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const section =
-    searchParams.get("section") === "membership" ? "membership" : "member";
+    searchParams.get("section") === "membership"
+      ? "membership"
+      : searchParams.get("section") === "attendance"
+        ? "attendance"
+        : "member";
 
-  const handleNavigate = (nextSection: "member" | "membership") => {
+  const handleNavigate = (
+    nextSection: "member" | "membership" | "attendance",
+  ) => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (nextSection === "membership") {
       params.set("section", "membership");
+      params.delete("q");
+      params.delete("field");
+    } else if (nextSection === "attendance") {
+      params.set("section", "attendance");
       params.delete("q");
       params.delete("field");
     } else {
@@ -67,6 +77,15 @@ const Sidebar = () => {
                 onClick={() => handleNavigate("membership")}
               >
                 회원권
+              </button>
+              <button
+                className={`menu-item sub${
+                  section === "attendance" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("attendance")}
+              >
+                출석현황
               </button>
             </div>
           )}

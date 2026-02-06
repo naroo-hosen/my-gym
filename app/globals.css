@@ -250,6 +250,84 @@ section {
   border-bottom: none;
 }
 
+.attendance-table {
+  display: flex;
+  gap: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.attendance-fixed {
+  flex: 0 0 auto;
+  min-width: 420px;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.attendance-scroll {
+  flex: 1;
+  max-width: 480px;
+  overflow-x: auto;
+  background: #ffffff;
+}
+
+.attendance-scroll-inner {
+  min-width: max-content;
+}
+
+.attendance-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(100px, 1fr));
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.attendance-date-row {
+  grid-template-columns: repeat(7, minmax(90px, 1fr));
+}
+
+.attendance-row:last-child {
+  border-bottom: none;
+}
+
+.attendance-header {
+  background: #f9fafb;
+  font-weight: 700;
+  color: #4b5563;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.attendance-cell {
+  padding: 12px 16px;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.attendance-cell:last-child {
+  border-right: none;
+}
+
+.attendance-date {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.attendance-day {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.attendance-cell.checked {
+  color: #16a34a;
+  font-weight: 700;
+}
+
 .status-label {
   display: inline-flex;
   align-items: center;

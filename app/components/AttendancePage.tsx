@@ -23,7 +23,9 @@ const buildRecentDates = (baseDate = new Date(), days = 7) => {
   const dates: Date[] = [];
   const start = new Date(baseDate);
   start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
+  const day = start.getDay();
+  const diffToMonday = (day + 6) % 7;
+  start.setDate(start.getDate() - diffToMonday - 7);
   for (let i = 0; i < days; i += 1) {
     const next = new Date(start);
     next.setDate(start.getDate() + i);

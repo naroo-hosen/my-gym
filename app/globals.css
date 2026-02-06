@@ -267,7 +267,7 @@ section {
 
 .attendance-scroll {
   flex: 1;
-  max-width: 480px;
+  max-width: 640px;
   overflow-x: auto;
   background: #ffffff;
 }
@@ -283,7 +283,7 @@ section {
 }
 
 .attendance-date-row {
-  grid-template-columns: repeat(7, minmax(90px, 1fr));
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
 }
 
 .attendance-row:last-child {

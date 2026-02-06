@@ -622,6 +622,23 @@ export const checkInMember = async (formData: FormData) => {
     return { status: "expired" as const };
   }
 
+  const todayEnd = new Date(today);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  const todayAttendanceCount = await prisma.memberActivity.count({
+    where: {
+      memberId,
+      type: "attendance_checked",
+      createdAt: {
+        gte: today,
+        lt: todayEnd,
+      },
+    },
+  });
+
+  if (todayAttendanceCount > 0) {
+    return { status: "already_checked" as const };
+  }
+
   const { start, end } = getWeekRange();
   const latestMembershipAssigned = await prisma.memberActivity.findFirst({
     where: {

@@ -280,6 +280,7 @@ section {
   display: grid;
   grid-template-columns: repeat(4, minmax(100px, 1fr));
   border-bottom: 1px solid #e5e7eb;
+  min-height: 56px;
 }
 
 .attendance-date-row {
@@ -329,6 +330,7 @@ section {
   justify-content: center;
   gap: 4px;
   font-size: 14px;
+  min-height: 56px;
 }
 
 .attendance-cell:last-child {

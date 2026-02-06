@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  checkInMember,
   createMember,
   deleteMember,
   extendMemberMembership,
@@ -27,6 +28,7 @@ type Member = {
   membershipExpiresAt: string | null;
   membershipDuration: number | null;
   membershipDurationUnit: "MONTH" | "DAY" | null;
+  membershipWeeklyAttendance: number | null;
   membershipPausedAt: string | null;
   membershipPauseEndsAt: string | null;
   membershipTotalPausedMs: number;
@@ -153,6 +155,8 @@ const getActivityTypeLabel = (type: string) => {
       return "회원 중지";
     case "member_restored":
       return "회원 복구";
+    case "attendance_checked":
+      return "출석 체크";
     default:
       return "기타";
   }
@@ -202,6 +206,17 @@ const resolveExpiryDate = (
   }
   derivedExpiry.setTime(derivedExpiry.getTime() + totalPausedMs);
   return derivedExpiry;
+};
+
+const getWeekRange = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  const day = start.getDay();
+  const diff = (day + 6) % 7;
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
 };
 
 const getRemainingDays = (
@@ -368,6 +383,49 @@ const MemberPage = ({
       selectedMember?.membershipTotalPausedMs,
     ],
   );
+  const weeklyAttendanceLimit = selectedMember?.membershipWeeklyAttendance ?? 0;
+  const weeklyAttendanceCount = useMemo(() => {
+    if (!selectedMember) {
+      return 0;
+    }
+    const { start, end } = getWeekRange();
+    const latestMembershipAssignedAt = selectedMember.activities
+      .filter((activity) => activity.type === "membership_assigned")
+      .reduce<Date | null>((latest, activity) => {
+        const createdAt = new Date(activity.createdAt);
+        if (Number.isNaN(createdAt.getTime())) {
+          return latest;
+        }
+        if (!latest || createdAt > latest) {
+          return createdAt;
+        }
+        return latest;
+      }, null);
+    const assignedAt = latestMembershipAssignedAt ??
+      (selectedMember.membershipAssignedAt
+        ? new Date(selectedMember.membershipAssignedAt)
+        : null);
+    return selectedMember.activities.filter((activity) => {
+      if (activity.type !== "attendance_checked") {
+        return false;
+      }
+      const createdAt = new Date(activity.createdAt);
+      if (Number.isNaN(createdAt.getTime())) {
+        return false;
+      }
+      const rangeStart =
+        assignedAt && assignedAt > start ? assignedAt : start;
+      return createdAt >= rangeStart && createdAt < end;
+    }).length;
+  }, [selectedMember]);
+  const weeklyAttendanceRemaining = weeklyAttendanceLimit - weeklyAttendanceCount;
+  const canCheckInMember = Boolean(
+    selectedMember?.membershipId &&
+      selectedMembershipRemainingDays !== null &&
+      selectedMembershipRemainingDays > 0 &&
+      !selectedMember.membershipPausedAt &&
+      selectedMember.status !== "DELETE",
+  );
   const selectedMembershipExpiryDate = useMemo(
     () =>
       resolveExpiryDate(
@@ -455,6 +513,31 @@ const MemberPage = ({
     }
 
     setPendingPauseMemberId(selectedMember.id);
+  };
+  const handleAttendanceCheck = () => {
+    if (!selectedMember || !canCheckInMember) {
+      return;
+    }
+
+    if (weeklyAttendanceRemaining <= 0) {
+      alert("이번 주 출석 가능 횟수를 초과했습니다");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("memberId", String(selectedMember.id));
+
+    startTransition(async () => {
+      const result = await checkInMember(formData);
+      if (result?.status === "limit") {
+        alert("이번 주 출석 가능 횟수를 초과했습니다");
+        return;
+      }
+      if (result?.status === "ok") {
+        alert("출석체크가 완료되었습니다");
+      }
+      router.refresh();
+    });
   };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const sortedMembers = useMemo(() => {
@@ -1089,6 +1172,15 @@ const MemberPage = ({
                 >
                   변경 이력
                 </button>
+                {canCheckInMember && (
+                  <button
+                    className="button-primary"
+                    type="button"
+                    onClick={handleAttendanceCheck}
+                  >
+                    출석체크
+                  </button>
+                )}
                 {canPauseMembership && (
                   <button
                     className="button-secondary"

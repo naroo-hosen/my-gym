@@ -125,6 +125,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         latestMembership?.membership?.duration ?? null,
       membershipDurationUnit:
         latestMembership?.membership?.durationUnit ?? null,
+      membershipWeeklyAttendance:
+        latestMembership?.membership?.weeklyAttendance ?? null,
       membershipPausedAt:
         latestMembership?.pausedAt?.toISOString() ?? null,
       membershipPauseEndsAt:

@@ -283,7 +283,7 @@ section {
 }
 
 .attendance-date-row {
-  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  grid-template-columns: repeat(14, minmax(120px, 1fr));
 }
 
 .attendance-week-row {
@@ -291,10 +291,21 @@ section {
 }
 
 .attendance-week-cell {
-  grid-column: 1 / -1;
+  grid-column: span 7;
   font-size: 13px;
   font-weight: 700;
   color: #374151;
+  border-right: 1px solid #e5e7eb;
+}
+
+.attendance-week-cell.is-current {
+  border-right: none;
+  background: #e0e7ff;
+  color: #312e81;
+}
+
+.attendance-cell.is-current-week {
+  background: #eef2ff;
 }
 
 .attendance-row:last-child {

@@ -70,7 +70,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const isAttendanceSection = section === "attendance";
   const attendanceStart = new Date();
   attendanceStart.setHours(0, 0, 0, 0);
-  attendanceStart.setDate(attendanceStart.getDate() - 6);
+  attendanceStart.setDate(attendanceStart.getDate() - 13);
 
   const [members, memberships, attendanceMembers] = await Promise.all([
     prisma.member.findMany({

@@ -19,17 +19,29 @@ type AttendancePageProps = {
   members: AttendanceMember[];
 };
 
-const buildRecentDates = (baseDate = new Date(), days = 7) => {
-  const dates: Date[] = [];
-  const start = new Date(baseDate);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
-  for (let i = 0; i < days; i += 1) {
-    const next = new Date(start);
-    next.setDate(start.getDate() + i);
-    dates.push(next);
+const buildWeekRanges = (baseDate = new Date()) => {
+  const today = new Date(baseDate);
+  today.setHours(0, 0, 0, 0);
+  const day = today.getDay();
+  const diffToMonday = (day + 6) % 7;
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - diffToMonday);
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastWeekDates: Date[] = [];
+  const thisWeekDates: Date[] = [];
+
+  for (let i = 0; i < 7; i += 1) {
+    const last = new Date(lastWeekStart);
+    last.setDate(lastWeekStart.getDate() + i);
+    lastWeekDates.push(last);
+
+    const current = new Date(thisWeekStart);
+    current.setDate(thisWeekStart.getDate() + i);
+    thisWeekDates.push(current);
   }
-  return dates;
+
+  return { lastWeekDates, thisWeekDates };
 };
 
 const formatDateKey = (date: Date) =>
@@ -55,13 +67,20 @@ const formatMembershipDuration = (
 };
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
-  const recentDates = buildRecentDates();
-  const weekLabel =
-    recentDates.length > 0
-      ? `${formatDateLabel(recentDates[0])} ~ ${formatDateLabel(
-          recentDates[recentDates.length - 1],
+  const { lastWeekDates, thisWeekDates } = buildWeekRanges();
+  const lastWeekLabel =
+    lastWeekDates.length > 0
+      ? `${formatDateLabel(lastWeekDates[0])} ~ ${formatDateLabel(
+          lastWeekDates[lastWeekDates.length - 1],
         )}`
       : "";
+  const thisWeekLabel =
+    thisWeekDates.length > 0
+      ? `${formatDateLabel(thisWeekDates[0])} ~ ${formatDateLabel(
+          thisWeekDates[thisWeekDates.length - 1],
+        )}`
+      : "";
+  const allDates = [...lastWeekDates, ...thisWeekDates];
 
   return (
     <section className="panel list-panel">
@@ -106,12 +125,24 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           <div className="attendance-scroll-inner">
             <div className="attendance-row attendance-header attendance-date-row attendance-week-row">
               <div className="attendance-cell attendance-week-cell">
-                최근 1주일 ({weekLabel})
+                지난주 ({lastWeekLabel})
+              </div>
+              <div className="attendance-cell attendance-week-cell is-current">
+                이번주 ({thisWeekLabel})
               </div>
             </div>
             <div className="attendance-row attendance-header attendance-date-row">
-              {recentDates.map((date) => (
+              {lastWeekDates.map((date) => (
                 <div key={formatDateKey(date)} className="attendance-cell">
+                  <div className="attendance-date">{formatDateLabel(date)}</div>
+                  <div className="attendance-day">{formatDayLabel(date)}</div>
+                </div>
+              ))}
+              {thisWeekDates.map((date) => (
+                <div
+                  key={formatDateKey(date)}
+                  className="attendance-cell is-current-week"
+                >
                   <div className="attendance-date">{formatDateLabel(date)}</div>
                   <div className="attendance-day">{formatDayLabel(date)}</div>
                 </div>
@@ -131,15 +162,16 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                   key={member.id}
                   className="attendance-row attendance-date-row"
                 >
-                  {recentDates.map((date) => {
+                  {allDates.map((date, index) => {
                     const dateKey = formatDateKey(date);
                     const hasAttendance = attendanceDates.has(dateKey);
+                    const isCurrentWeek = index >= lastWeekDates.length;
                     return (
                       <div
                         key={dateKey}
                         className={`attendance-cell${
                           hasAttendance ? " checked" : ""
-                        }`}
+                        }${isCurrentWeek ? " is-current-week" : ""}`}
                       >
                         {hasAttendance ? "✔︎" : "-"}
                       </div>

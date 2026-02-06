@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useMemo, useRef } from "react";
+
 type AttendanceActivity = {
   createdAt: string;
 };
@@ -68,6 +70,13 @@ const formatMembershipDuration = (
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
   const { lastWeekDates, thisWeekDates } = buildWeekRanges();
+  const todayKey = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return formatDateKey(today);
+  }, []);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const todayCellRef = useRef<HTMLDivElement | null>(null);
   const lastWeekLabel =
     lastWeekDates.length > 0
       ? `${formatDateLabel(lastWeekDates[0])} ~ ${formatDateLabel(
@@ -81,6 +90,17 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         )}`
       : "";
   const allDates = [...lastWeekDates, ...thisWeekDates];
+
+  useEffect(() => {
+    if (!scrollContainerRef.current || !todayCellRef.current) {
+      return;
+    }
+    const container = scrollContainerRef.current;
+    const cell = todayCellRef.current;
+    const cellCenter = cell.offsetLeft + cell.offsetWidth / 2;
+    const targetLeft = Math.max(0, cellCenter - container.clientWidth / 2);
+    container.scrollTo({ left: targetLeft, behavior: "smooth" });
+  }, []);
 
   return (
     <section className="panel list-panel">
@@ -126,7 +146,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           ))}
         </div>
 
-        <div className="attendance-scroll">
+        <div className="attendance-scroll" ref={scrollContainerRef}>
           <div className="attendance-scroll-inner">
             <div className="attendance-row attendance-header attendance-date-row attendance-week-row">
               <div className="attendance-cell attendance-week-cell">
@@ -137,21 +157,36 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
               </div>
             </div>
             <div className="attendance-row attendance-header attendance-date-row">
-              {lastWeekDates.map((date) => (
-                <div key={formatDateKey(date)} className="attendance-cell">
-                  <div className="attendance-date">{formatDateLabel(date)}</div>
-                  <div className="attendance-day">{formatDayLabel(date)}</div>
-                </div>
-              ))}
-              {thisWeekDates.map((date) => (
-                <div
-                  key={formatDateKey(date)}
-                  className="attendance-cell is-current-week"
-                >
-                  <div className="attendance-date">{formatDateLabel(date)}</div>
-                  <div className="attendance-day">{formatDayLabel(date)}</div>
-                </div>
-              ))}
+              {lastWeekDates.map((date) => {
+                const dateKey = formatDateKey(date);
+                return (
+                  <div
+                    key={dateKey}
+                    className="attendance-cell"
+                    ref={dateKey === todayKey ? todayCellRef : undefined}
+                  >
+                    <div className="attendance-date">
+                      {formatDateLabel(date)}
+                    </div>
+                    <div className="attendance-day">{formatDayLabel(date)}</div>
+                  </div>
+                );
+              })}
+              {thisWeekDates.map((date) => {
+                const dateKey = formatDateKey(date);
+                return (
+                  <div
+                    key={dateKey}
+                    className="attendance-cell is-current-week"
+                    ref={dateKey === todayKey ? todayCellRef : undefined}
+                  >
+                    <div className="attendance-date">
+                      {formatDateLabel(date)}
+                    </div>
+                    <div className="attendance-day">{formatDayLabel(date)}</div>
+                  </div>
+                );
+              })}
             </div>
             {members.map((member) => {
               const attendanceDates = new Set(

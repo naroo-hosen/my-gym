@@ -389,6 +389,9 @@ const MemberPage = ({
       return 0;
     }
     const { start, end } = getWeekRange();
+    const assignedAt = selectedMember.membershipAssignedAt
+      ? new Date(selectedMember.membershipAssignedAt)
+      : null;
     return selectedMember.activities.filter((activity) => {
       if (activity.type !== "attendance_checked") {
         return false;
@@ -397,7 +400,9 @@ const MemberPage = ({
       if (Number.isNaN(createdAt.getTime())) {
         return false;
       }
-      return createdAt >= start && createdAt < end;
+      const rangeStart =
+        assignedAt && assignedAt > start ? assignedAt : start;
+      return createdAt >= rangeStart && createdAt < end;
     }).length;
   }, [selectedMember]);
   const weeklyAttendanceRemaining = weeklyAttendanceLimit - weeklyAttendanceCount;

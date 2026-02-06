@@ -623,12 +623,13 @@ export const checkInMember = async (formData: FormData) => {
   }
 
   const { start, end } = getWeekRange();
+  const assignedAt = memberMembership.assignedAt;
   const attendanceCount = await prisma.memberActivity.count({
     where: {
       memberId,
       type: "attendance_checked",
       createdAt: {
-        gte: start,
+        gte: assignedAt > start ? assignedAt : start,
         lt: end,
       },
     },

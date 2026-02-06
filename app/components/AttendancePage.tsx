@@ -96,6 +96,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
 
       <div className="attendance-table">
         <div className="attendance-fixed">
+          <div className="attendance-row attendance-header attendance-week-spacer">
+            <div className="attendance-cell attendance-week-spacer-cell">
+              주간 구간
+            </div>
+          </div>
           <div className="attendance-row attendance-header">
             <div className="attendance-cell">이름</div>
             <div className="attendance-cell">연락처</div>

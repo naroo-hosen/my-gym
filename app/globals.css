@@ -286,6 +286,17 @@ section {
   grid-template-columns: repeat(7, minmax(120px, 1fr));
 }
 
+.attendance-week-row {
+  background: #f3f4f6;
+}
+
+.attendance-week-cell {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
 .attendance-row:last-child {
   border-bottom: none;
 }

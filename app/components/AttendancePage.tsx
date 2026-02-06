@@ -56,6 +56,12 @@ const formatMembershipDuration = (
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
   const recentDates = buildRecentDates();
+  const weekLabel =
+    recentDates.length > 0
+      ? `${formatDateLabel(recentDates[0])} ~ ${formatDateLabel(
+          recentDates[recentDates.length - 1],
+        )}`
+      : "";
 
   return (
     <section className="panel list-panel">
@@ -98,6 +104,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
 
         <div className="attendance-scroll">
           <div className="attendance-scroll-inner">
+            <div className="attendance-row attendance-header attendance-date-row attendance-week-row">
+              <div className="attendance-cell attendance-week-cell">
+                최근 1주일 ({weekLabel})
+              </div>
+            </div>
             <div className="attendance-row attendance-header attendance-date-row">
               {recentDates.map((date) => (
                 <div key={formatDateKey(date)} className="attendance-cell">

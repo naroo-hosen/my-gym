@@ -267,7 +267,8 @@ section {
 
 .attendance-scroll {
   flex: 1;
-  max-width: 640px;
+  max-width: none;
+  width: 100%;
   overflow-x: auto;
   background: #ffffff;
 }

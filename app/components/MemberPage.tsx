@@ -62,6 +62,7 @@ type MemberPageProps = {
   membershipFilter: MembershipFilter;
   statusFilters: StatusFilter[];
   section: "member" | "membership";
+  selectedMemberId?: number | null;
 };
 
 type MembershipFilter = "all" | "with" | "without";
@@ -287,11 +288,14 @@ const MemberPage = ({
   membershipFilter,
   statusFilters,
   section,
+  selectedMemberId: initialSelectedMemberId = null,
 }: MemberPageProps) => {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(
+    initialSelectedMemberId,
+  );
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
@@ -359,6 +363,13 @@ const MemberPage = ({
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
   );
+
+  useEffect(() => {
+    if (initialSelectedMemberId === null) {
+      return;
+    }
+    setSelectedMemberId(initialSelectedMemberId);
+  }, [initialSelectedMemberId]);
   const pendingPauseMember = useMemo(
     () =>
       pendingPauseMemberId

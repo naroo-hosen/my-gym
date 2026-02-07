@@ -133,6 +133,80 @@ p {
   min-height: 100%;
 }
 
+.marketing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.marketing-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.marketing-subtitle {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.marketing-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.marketing-panel .panel-header {
+  margin-bottom: 12px;
+}
+
+.marketing-insights {
+  display: grid;
+  gap: 16px;
+}
+
+.marketing-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.marketing-chart-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 3fr minmax(60px, auto);
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.marketing-chart-label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.marketing-chart-track {
+  position: relative;
+  height: 10px;
+  background: #f3f4f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.marketing-chart-bar {
+  height: 100%;
+  width: calc(var(--value) / var(--max) * 100%);
+  background: linear-gradient(90deg, #f97316, #fb923c);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.marketing-chart-value {
+  text-align: right;
+  font-weight: 600;
+  color: #1f2937;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;

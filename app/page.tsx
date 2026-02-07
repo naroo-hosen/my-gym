@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import AttendancePage from "@/app/components/AttendancePage";
+import MarketingPage from "@/app/components/MarketingPage";
 import MemberPage from "@/app/components/MemberPage";
 import MembershipPage from "@/app/components/MembershipPage";
 import Sidebar from "@/app/components/Sidebar";
@@ -11,6 +12,7 @@ type HomePageProps = {
     section?: string;
     membership?: string;
     status?: string;
+    memberId?: string;
   };
 };
 
@@ -23,6 +25,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ? "membership"
       : searchParams?.section === "attendance"
         ? "attendance"
+        : searchParams?.section === "marketing"
+          ? "marketing"
         : "member";
   const membershipFilter =
     searchParams?.membership === "with" || searchParams?.membership === "without"
@@ -36,6 +40,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     .filter(
       (value) => value === "ACTIVE" || value === "DELETE" || value === "PAUSED",
     );
+  const selectedMemberId =
+    typeof searchParams?.memberId === "string" &&
+    !Number.isNaN(Number(searchParams.memberId))
+      ? Number(searchParams.memberId)
+      : null;
 
   const statusConditions = statusFilters.length
     ? statusFilters.map((status) => {
@@ -68,82 +77,143 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     : [];
 
   const isAttendanceSection = section === "attendance";
+  const isMarketingSection = section === "marketing";
   const attendanceStart = new Date();
   attendanceStart.setHours(0, 0, 0, 0);
   attendanceStart.setDate(attendanceStart.getDate() - 13);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(todayStart.getDate() + 1);
 
-  const [members, memberships, attendanceMembers] = await Promise.all([
-    prisma.member.findMany({
-      where: {
-        ...(searchTerm
-          ? {
-              [searchField]: {
-                contains: searchTerm,
-              },
-            }
-          : {}),
-        ...(statusConditions.length > 0 ? { OR: statusConditions } : {}),
-        ...(membershipFilter === "with"
-          ? { memberMemberships: { some: {} } }
-          : membershipFilter === "without"
-            ? { memberMemberships: { none: {} } }
-            : {}),
-      },
-      include: {
-        memberMemberships: {
-          include: {
-            membership: true,
-          },
-        },
-        activities: {
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
-    prisma.membership.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
-    isAttendanceSection
-      ? prisma.member.findMany({
-          where: {
-            status: "ACTIVE",
-            memberMemberships: {
-              some: {
-                pausedAt: null,
-              },
+  const [
+    members,
+    memberships,
+    attendanceMembers,
+    marketingMembers,
+    todayNewMembers,
+    totalMembersWithMembership,
+  ] =
+    await Promise.all([
+      isMarketingSection
+        ? Promise.resolve([])
+        : prisma.member.findMany({
+            where: {
+              ...(searchTerm
+                ? {
+                    [searchField]: {
+                      contains: searchTerm,
+                    },
+                  }
+                : {}),
+              ...(statusConditions.length > 0 ? { OR: statusConditions } : {}),
+              ...(membershipFilter === "with"
+                ? { memberMemberships: { some: {} } }
+                : membershipFilter === "without"
+                  ? { memberMemberships: { none: {} } }
+                  : {}),
             },
-          },
-          include: {
-            memberMemberships: {
-              include: {
-                membership: true,
-              },
-            },
-            activities: {
-              where: {
-                type: "attendance_checked",
-                createdAt: {
-                  gte: attendanceStart,
+            include: {
+              memberMemberships: {
+                include: {
+                  membership: true,
                 },
               },
-              orderBy: {
-                createdAt: "desc",
+              activities: {
+                orderBy: {
+                  createdAt: "desc",
+                },
               },
             },
-          },
-          orderBy: {
-            name: "asc",
-          },
-        })
-      : Promise.resolve([]),
-  ]);
+            orderBy: {
+              createdAt: "desc",
+            },
+          }),
+      isMarketingSection
+        ? Promise.resolve([])
+        : prisma.membership.findMany({
+            orderBy: {
+              createdAt: "desc",
+            },
+          }),
+      isAttendanceSection
+        ? prisma.member.findMany({
+            where: {
+              status: "ACTIVE",
+              memberMemberships: {
+                some: {
+                  pausedAt: null,
+                },
+              },
+            },
+            include: {
+              memberMemberships: {
+                include: {
+                  membership: true,
+                },
+              },
+              activities: {
+                where: {
+                  type: "attendance_checked",
+                  createdAt: {
+                    gte: attendanceStart,
+                  },
+                },
+                orderBy: {
+                  createdAt: "desc",
+                },
+              },
+            },
+            orderBy: {
+              name: "asc",
+            },
+          })
+        : Promise.resolve([]),
+      isMarketingSection
+        ? prisma.member.findMany({
+            where: {
+              status: "ACTIVE",
+              memberMemberships: {
+                some: {
+                  expiresAt: {
+                    not: null,
+                  },
+                },
+              },
+            },
+            include: {
+              memberMemberships: {
+                include: {
+                  membership: true,
+                },
+              },
+            },
+            orderBy: {
+              name: "asc",
+            },
+          })
+        : Promise.resolve([]),
+      isMarketingSection
+        ? prisma.member.count({
+            where: {
+              createdAt: {
+                gte: todayStart,
+                lt: tomorrowStart,
+              },
+            },
+          })
+        : Promise.resolve(0),
+      isMarketingSection
+        ? prisma.member.count({
+            where: {
+              status: "ACTIVE",
+              memberMemberships: {
+                some: {},
+              },
+            },
+          })
+        : Promise.resolve(0),
+    ]);
 
   const serializedMembers = members.map((member) => {
     const latestMembership = member.memberMemberships.reduce(
@@ -213,6 +283,67 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     status: membership.status,
     createdAt: membership.createdAt.toISOString(),
   }));
+  const marketingTargets = marketingMembers
+    .map((member) => {
+      const latestMembership = member.memberMemberships.reduce(
+        (latest, current) =>
+          !latest || current.assignedAt > latest.assignedAt ? current : latest,
+        null as (typeof member.memberMemberships)[number] | null,
+      );
+      if (!latestMembership?.expiresAt) {
+        return null;
+      }
+      const adjustedExpiry = new Date(latestMembership.expiresAt);
+      if (Number.isNaN(adjustedExpiry.getTime())) {
+        return null;
+      }
+      adjustedExpiry.setTime(
+        adjustedExpiry.getTime() + (latestMembership.totalPausedMs ?? 0),
+      );
+      return {
+        id: member.id,
+        name: member.name,
+        phone: member.phone,
+        expiresAt: adjustedExpiry.toISOString(),
+      };
+    })
+    .filter(
+      (
+        member,
+      ): member is { id: number; name: string; phone: string; expiresAt: string } =>
+        member !== null,
+    );
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const marketingBuckets = [7, 3, 1, 0].map((days) => ({
+    days,
+    label: days === 0 ? "만료 당일" : `만료 ${days}일 전`,
+    members: [] as {
+      id: number;
+      name: string;
+      phone: string;
+      expiresAt: string;
+    }[],
+  }));
+
+  marketingTargets.forEach((member) => {
+    const expiresAt = new Date(member.expiresAt);
+    expiresAt.setHours(0, 0, 0, 0);
+    const diffDays = Math.round(
+      (expiresAt.getTime() - today.getTime()) / MS_PER_DAY,
+    );
+    const bucket = marketingBuckets.find((item) => item.days === diffDays);
+    if (bucket) {
+      bucket.members.push(member);
+    }
+  });
+
+  marketingBuckets.forEach((bucket) => {
+    bucket.members.sort(
+      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+    );
+  });
 
   return (
     <main className="page">
@@ -222,6 +353,12 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <MembershipPage memberships={serializedMemberships} />
       ) : section === "attendance" ? (
         <AttendancePage members={serializedAttendanceMembers} />
+      ) : section === "marketing" ? (
+        <MarketingPage
+          buckets={marketingBuckets}
+          todayNewMembers={todayNewMembers}
+          totalMembersWithMembership={totalMembersWithMembership}
+        />
       ) : (
         <MemberPage
           members={serializedMembers}
@@ -231,6 +368,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           membershipFilter={membershipFilter}
           statusFilters={statusFilters}
           section={section}
+          selectedMemberId={selectedMemberId}
         />
       )}
     </main>

@@ -16,6 +16,7 @@ type ExpiringBucket = {
 type MarketingPageProps = {
   buckets: ExpiringBucket[];
   todayNewMembers: number;
+  totalMembersWithMembership: number;
 };
 
 const formatDate = (value: string) => {
@@ -53,11 +54,12 @@ const renderTable = (members: ExpiringMember[]) => {
   );
 };
 
-const MarketingPage = ({ buckets, todayNewMembers }: MarketingPageProps) => {
-  const maxCount = Math.max(
-    1,
-    ...buckets.map((bucket) => bucket.members.length),
-  );
+const MarketingPage = ({
+  buckets,
+  todayNewMembers,
+  totalMembersWithMembership,
+}: MarketingPageProps) => {
+  const baseCount = Math.max(1, totalMembersWithMembership);
 
   return (
     <section className="marketing">
@@ -87,26 +89,31 @@ const MarketingPage = ({ buckets, todayNewMembers }: MarketingPageProps) => {
         </div>
         <div
           className="marketing-chart"
-          style={{ "--max": maxCount } as CSSProperties}
+          style={{ "--max": baseCount } as CSSProperties}
         >
-          {buckets.map((bucket) => (
-            <div className="marketing-chart-item" key={bucket.days}>
-              <div className="marketing-chart-label">{bucket.label}</div>
-              <div className="marketing-chart-track">
-                <div
-                  className="marketing-chart-bar"
-                  style={
-                    {
-                      "--value": bucket.members.length,
-                    } as CSSProperties
-                  }
-                />
+          {buckets.map((bucket) => {
+            const percentage = Math.round(
+              (bucket.members.length / baseCount) * 100,
+            );
+            return (
+              <div className="marketing-chart-item" key={bucket.days}>
+                <div className="marketing-chart-label">{bucket.label}</div>
+                <div className="marketing-chart-track">
+                  <div
+                    className="marketing-chart-bar"
+                    style={
+                      {
+                        "--value": bucket.members.length,
+                      } as CSSProperties
+                    }
+                  />
+                </div>
+                <div className="marketing-chart-value">
+                  {bucket.members.length}명 ({percentage}%)
+                </div>
               </div>
-              <div className="marketing-chart-value">
-                {bucket.members.length}명
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </section>

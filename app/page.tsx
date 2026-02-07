@@ -86,6 +86,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     attendanceMembers,
     marketingMembers,
     todayNewMembers,
+    totalMembersWithMembership,
   ] =
     await Promise.all([
       isMarketingSection
@@ -192,6 +193,16 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: {
                 gte: todayStart,
                 lt: tomorrowStart,
+              },
+            },
+          })
+        : Promise.resolve(0),
+      isMarketingSection
+        ? prisma.member.count({
+            where: {
+              status: "ACTIVE",
+              memberMemberships: {
+                some: {},
               },
             },
           })
@@ -340,6 +351,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <MarketingPage
           buckets={marketingBuckets}
           todayNewMembers={todayNewMembers}
+          totalMembersWithMembership={totalMembersWithMembership}
         />
       ) : (
         <MemberPage

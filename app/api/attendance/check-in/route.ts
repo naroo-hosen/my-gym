@@ -12,11 +12,14 @@ const buildCorsHeaders = (request: Request) => {
   const origin = originHeader ?? "*";
   const requestedHeaders =
     request.headers.get("access-control-request-headers") ?? "Content-Type";
+  const requestPrivateNetwork =
+    request.headers.get("access-control-request-private-network") === "true";
   return {
     "Access-Control-Allow-Origin":
       originHeader === "null" ? "null" : origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": requestedHeaders,
+    ...(requestPrivateNetwork ? { "Access-Control-Allow-Private-Network": "true" } : {}),
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

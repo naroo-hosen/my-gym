@@ -71,7 +71,7 @@ export const POST = async (request: Request) => {
 
   if (!member) {
     return NextResponse.json(
-      { status: "not_found", message: "회원 정보를 찾을 수 없습니다." },
+      { status: "not_found", message: "회원을 찾을 수 없습니다" },
       { status: 404, headers: corsHeaders },
     );
   }
@@ -96,7 +96,7 @@ export const POST = async (request: Request) => {
     return NextResponse.json(
       {
         status: "no_membership",
-        message: "회원권이 없습니다.",
+        message: "회원권이 없습니다",
         member,
       },
       { status: 200, headers: corsHeaders },

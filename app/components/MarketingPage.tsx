@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 type ExpiringMember = {
   id: number;
   name: string;
@@ -13,6 +15,7 @@ type ExpiringBucket = {
 
 type MarketingPageProps = {
   buckets: ExpiringBucket[];
+  todayNewMembers: number;
 };
 
 const formatDate = (value: string) => {
@@ -50,28 +53,64 @@ const renderTable = (members: ExpiringMember[]) => {
   );
 };
 
-const MarketingPage = ({ buckets }: MarketingPageProps) => (
-  <section className="marketing">
-    <header className="marketing-header">
-      <div>
-        <h2>마케팅</h2>
-        <p className="marketing-subtitle">
-          만료 예정 회원에게 안내 메시지를 보낼 수 있도록 기간별로 정리했습니다.
-        </p>
+const MarketingPage = ({ buckets, todayNewMembers }: MarketingPageProps) => {
+  const maxCount = Math.max(
+    1,
+    ...buckets.map((bucket) => bucket.members.length),
+  );
+
+  return (
+    <section className="marketing">
+      <header className="marketing-header">
+        <div>
+          <h2>마케팅</h2>
+          <p className="marketing-subtitle">
+            만료 예정 회원에게 안내 메시지를 보낼 수 있도록 기간별로 정리했습니다.
+          </p>
+        </div>
+      </header>
+      <div className="marketing-grid">
+        {buckets.map((bucket) => (
+          <section className="panel marketing-panel" key={bucket.days}>
+            <div className="panel-header">
+              <h3>{bucket.label}</h3>
+              <span className="count">{bucket.members.length}명</span>
+            </div>
+            {renderTable(bucket.members)}
+          </section>
+        ))}
       </div>
-    </header>
-    <div className="marketing-grid">
-      {buckets.map((bucket) => (
-        <section className="panel marketing-panel" key={bucket.days}>
-          <div className="panel-header">
-            <h3>{bucket.label}</h3>
-            <span className="count">{bucket.members.length}명</span>
-          </div>
-          {renderTable(bucket.members)}
-        </section>
-      ))}
-    </div>
-  </section>
-);
+      <section className="panel marketing-insights">
+        <div className="panel-header">
+          <h3>오늘 신규 등록</h3>
+          <span className="count">{todayNewMembers}명</span>
+        </div>
+        <div
+          className="marketing-chart"
+          style={{ "--max": maxCount } as CSSProperties}
+        >
+          {buckets.map((bucket) => (
+            <div className="marketing-chart-item" key={bucket.days}>
+              <div className="marketing-chart-label">{bucket.label}</div>
+              <div className="marketing-chart-track">
+                <div
+                  className="marketing-chart-bar"
+                  style={
+                    {
+                      "--value": bucket.members.length,
+                    } as CSSProperties
+                  }
+                />
+              </div>
+              <div className="marketing-chart-value">
+                {bucket.members.length}명
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+};
 
 export default MarketingPage;

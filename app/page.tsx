@@ -75,8 +75,18 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const attendanceStart = new Date();
   attendanceStart.setHours(0, 0, 0, 0);
   attendanceStart.setDate(attendanceStart.getDate() - 13);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(todayStart.getDate() + 1);
 
-  const [members, memberships, attendanceMembers, marketingMembers] =
+  const [
+    members,
+    memberships,
+    attendanceMembers,
+    marketingMembers,
+    todayNewMembers,
+  ] =
     await Promise.all([
       isMarketingSection
         ? Promise.resolve([])
@@ -176,6 +186,16 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
             },
           })
         : Promise.resolve([]),
+      isMarketingSection
+        ? prisma.member.count({
+            where: {
+              createdAt: {
+                gte: todayStart,
+                lt: tomorrowStart,
+              },
+            },
+          })
+        : Promise.resolve(0),
     ]);
 
   const serializedMembers = members.map((member) => {
@@ -317,7 +337,10 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : section === "attendance" ? (
         <AttendancePage members={serializedAttendanceMembers} />
       ) : section === "marketing" ? (
-        <MarketingPage buckets={marketingBuckets} />
+        <MarketingPage
+          buckets={marketingBuckets}
+          todayNewMembers={todayNewMembers}
+        />
       ) : (
         <MemberPage
           members={serializedMembers}

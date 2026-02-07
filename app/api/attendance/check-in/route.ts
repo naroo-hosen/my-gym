@@ -7,6 +7,59 @@ type CheckInRequestBody = {
   phone?: string;
 };
 
+type MembershipDurationUnit = "MONTH" | "DAY";
+
+const getMembershipExpiryDate = (
+  assignedAt: Date,
+  duration: number,
+  durationUnit: MembershipDurationUnit,
+) => {
+  const expiresAt = new Date(assignedAt);
+
+  if (durationUnit === "DAY") {
+    expiresAt.setDate(expiresAt.getDate() + Math.max(duration - 1, 0));
+    expiresAt.setHours(23, 59, 59, 999);
+    return expiresAt;
+  }
+
+  expiresAt.setMonth(expiresAt.getMonth() + duration);
+  return expiresAt;
+};
+
+const getAdjustedExpiryDate = (memberMembership: {
+  assignedAt: Date;
+  expiresAt: Date | null;
+  totalPausedMs: number;
+  membership: { duration: number; durationUnit: MembershipDurationUnit } | null;
+}) => {
+  const baseExpiry =
+    memberMembership.expiresAt ??
+    (memberMembership.membership?.duration
+      ? getMembershipExpiryDate(
+          memberMembership.assignedAt,
+          memberMembership.membership.duration,
+          memberMembership.membership.durationUnit,
+        )
+      : null);
+  if (!baseExpiry) {
+    return null;
+  }
+  const adjusted = new Date(baseExpiry);
+  adjusted.setTime(baseExpiry.getTime() + memberMembership.totalPausedMs);
+  return adjusted;
+};
+
+const getWeekRange = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  const day = start.getDay();
+  const diff = (day + 6) % 7;
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
+};
+
 const buildCorsHeaders = (request: Request) => {
   const originHeader = request.headers.get("origin");
   const origin = originHeader ?? "*";
@@ -110,12 +163,64 @@ export const POST = async (request: Request) => {
         status: "no_membership",
         message: "회원권이 없습니다",
         member,
+        summary: null,
       },
       { status: 200, headers: corsHeaders },
     );
   }
 
+  const expiryDate = getAdjustedExpiryDate({
+    assignedAt: memberMembership.assignedAt,
+    expiresAt: memberMembership.expiresAt,
+    totalPausedMs: memberMembership.totalPausedMs,
+    membership: memberMembership.membership
+      ? {
+          duration: memberMembership.membership.duration,
+          durationUnit:
+            memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
+        }
+      : null,
+  });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiryDateOnly = expiryDate ? new Date(expiryDate) : null;
+  if (expiryDateOnly) {
+    expiryDateOnly.setHours(0, 0, 0, 0);
+  }
+  const daysRemaining =
+    expiryDateOnly && expiryDateOnly >= today
+      ? Math.ceil((expiryDateOnly.getTime() - today.getTime()) / 86400000)
+      : 0;
+
+  const { start, end } = getWeekRange();
+  const latestMembershipAssigned = await prisma.memberActivity.findFirst({
+    where: {
+      memberId: member.id,
+      type: "membership_assigned",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+  const assignedAt = latestMembershipAssigned?.createdAt ?? memberMembership.assignedAt;
+  let weeklyAttendanceCount = await prisma.memberActivity.count({
+    where: {
+      memberId: member.id,
+      type: "attendance_checked",
+      createdAt: {
+        gte: assignedAt > start ? assignedAt : start,
+        lt: end,
+      },
+    },
+  });
+
   const result = await checkInMemberById(prisma, member.id);
+  if (result.status === "ok") {
+    weeklyAttendanceCount += 1;
+  }
   const statusMessageMap: Record<string, string> = {
     ok: "출석체크가 완료되었습니다.",
     already_checked: "오늘은 이미 출석체크를 완료했습니다.",
@@ -129,6 +234,11 @@ export const POST = async (request: Request) => {
       status: result.status,
       message: statusMessageMap[result.status] ?? "출석체크가 불가능합니다.",
       member,
+      summary: {
+        daysRemaining,
+        weeklyAttendanceCount,
+        weeklyAttendanceLimit: memberMembership.membership?.weeklyAttendance ?? 0,
+      },
     },
     { headers: corsHeaders },
   );

@@ -86,6 +86,27 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+      }
+      .summary-card {
+        background: #f6f8fd;
+        border-radius: 16px;
+        padding: 14px 16px;
+        display: grid;
+        gap: 6px;
+      }
+      .summary-title {
+        font-size: 13px;
+        color: #6b7a96;
+      }
+      .summary-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2a3d;
+      }
       .action {
         border: none;
         border-radius: 16px;
@@ -229,6 +250,17 @@
         <button class="dial" data-value="0">0</button>
       </section>
 
+      <section class="summary" aria-label="회원권 정보">
+        <div class="summary-card">
+          <span class="summary-title">회원권 남은 일수</span>
+          <strong class="summary-value" id="daysRemaining">-</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-title">이번 주 출석</span>
+          <strong class="summary-value" id="weeklyAttendance">-</strong>
+        </div>
+      </section>
+
       <section class="actions">
         <button class="action secondary" type="button" id="clearButton">
           전체 지우기
@@ -272,6 +304,8 @@
       const modal = document.getElementById("modal");
       const modalMessage = document.getElementById("modalMessage");
       const modalClose = document.getElementById("modalClose");
+      const daysRemaining = document.getElementById("daysRemaining");
+      const weeklyAttendance = document.getElementById("weeklyAttendance");
 
       const normalizeApiBase = (value) => {
         const trimmed = value.trim();
@@ -313,6 +347,25 @@
           modalMessage.textContent = message;
           modal.classList.add("is-open");
         }
+      };
+
+      const setSummary = (summary) => {
+        if (!summary) {
+          daysRemaining.textContent = "-";
+          weeklyAttendance.textContent = "-";
+          return;
+        }
+        const daysText =
+          typeof summary.daysRemaining === "number"
+            ? `${summary.daysRemaining}일`
+            : "-";
+        const weeklyText =
+          typeof summary.weeklyAttendanceCount === "number" &&
+          typeof summary.weeklyAttendanceLimit === "number"
+            ? `${summary.weeklyAttendanceCount} / ${summary.weeklyAttendanceLimit}회`
+            : "-";
+        daysRemaining.textContent = daysText;
+        weeklyAttendance.textContent = weeklyText;
       };
 
       const closeModal = () => {
@@ -384,6 +437,10 @@
             body: JSON.stringify({ phone }),
           });
           const data = await response.json();
+
+          if (data?.summary !== undefined) {
+            setSummary(data.summary);
+          }
 
           if (data?.message) {
             setStatus(

@@ -165,10 +165,14 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                     className="attendance-cell"
                     ref={dateKey === todayKey ? todayCellRef : undefined}
                   >
-                    <div className="attendance-date">
-                      {formatDateLabel(date)}
+                    <div className="attendance-date-line">
+                      <span className="attendance-date">
+                        {formatDateLabel(date)}
+                      </span>
+                      <span className="attendance-day">
+                        {formatDayLabel(date)}
+                      </span>
                     </div>
-                    <div className="attendance-day">{formatDayLabel(date)}</div>
                   </div>
                 );
               })}
@@ -180,10 +184,14 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                     className="attendance-cell is-current-week"
                     ref={dateKey === todayKey ? todayCellRef : undefined}
                   >
-                    <div className="attendance-date">
-                      {formatDateLabel(date)}
+                    <div className="attendance-date-line">
+                      <span className="attendance-date">
+                        {formatDateLabel(date)}
+                      </span>
+                      <span className="attendance-day">
+                        {formatDayLabel(date)}
+                      </span>
                     </div>
-                    <div className="attendance-day">{formatDayLabel(date)}</div>
                   </div>
                 );
               })}

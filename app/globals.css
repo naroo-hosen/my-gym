@@ -441,6 +441,7 @@ section {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden;
+  width: 100%;
 }
 
 .attendance-summary {
@@ -516,8 +517,8 @@ section {
 }
 
 .attendance-fixed {
-  flex: 0 0 auto;
-  min-width: 420px;
+  flex: 0 0 32%;
+  min-width: 0;
   border-right: 1px solid #e5e7eb;
   background: #ffffff;
 }
@@ -526,17 +527,19 @@ section {
   flex: 1;
   max-width: none;
   width: 100%;
+  min-width: 0;
   overflow-x: auto;
   background: #ffffff;
 }
 
 .attendance-scroll-inner {
-  min-width: max-content;
+  min-width: 0;
+  width: 100%;
 }
 
 .attendance-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid #e5e7eb;
   min-height: 56px;
 }
@@ -558,7 +561,7 @@ section {
 }
 
 .attendance-date-row {
-  grid-template-columns: repeat(14, minmax(96px, 1fr));
+  grid-template-columns: repeat(14, minmax(0, 1fr));
 }
 
 .attendance-week-row {
@@ -612,6 +615,7 @@ section {
   gap: 4px;
   font-size: 14px;
   min-height: 56px;
+  min-width: 0;
 }
 
 .attendance-cell:last-child {

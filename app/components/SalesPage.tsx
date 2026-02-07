@@ -44,6 +44,7 @@ const SalesPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SalesEntry | null>(null);
   const [type, setType] = useState<SalesEntry["type"]>("income");
   const [date, setDate] = useState(getInputDate(new Date()));
   const [amount, setAmount] = useState("");
@@ -156,7 +157,7 @@ const SalesPage = () => {
     }
   };
 
-  const handleDelete = async (entryId: number) => {
+  const handleDeleteConfirm = async (entryId: number) => {
     if (deletingId) return;
 
     setDeletingId(entryId);
@@ -174,7 +175,17 @@ const SalesPage = () => {
       console.error(error);
     } finally {
       setDeletingId(null);
+      setPendingDelete(null);
     }
+  };
+
+  const handleDeleteClick = (entry: SalesEntry) => {
+    setPendingDelete(entry);
+  };
+
+  const handleDeleteCancel = () => {
+    if (deletingId) return;
+    setPendingDelete(null);
   };
 
   return (
@@ -357,10 +368,10 @@ const SalesPage = () => {
                         <button
                           className="button-secondary"
                           type="button"
-                          onClick={() => handleDelete(entry.id)}
+                          onClick={() => handleDeleteClick(entry)}
                           disabled={deletingId === entry.id}
                         >
-                          {deletingId === entry.id ? "삭제 중..." : "삭제"}
+                          삭제
                         </button>
                       </td>
                     </tr>
@@ -377,6 +388,35 @@ const SalesPage = () => {
           </div>
         </section>
       </div>
+      {pendingDelete ? (
+        <div className="modal-overlay">
+          <div className="modal confirm-modal">
+            <h3>매출 항목 삭제</h3>
+            <p className="confirm-message">
+              "{pendingDelete.title}" 항목을 정말 삭제할까요? 삭제하면 복구할 수
+              없습니다.
+            </p>
+            <div className="sales-form-actions">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={handleDeleteCancel}
+                disabled={deletingId !== null}
+              >
+                취소
+              </button>
+              <button
+                className="button-primary"
+                type="button"
+                onClick={() => handleDeleteConfirm(pendingDelete.id)}
+                disabled={deletingId !== null}
+              >
+                {deletingId === pendingDelete.id ? "삭제 중..." : "삭제"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 };

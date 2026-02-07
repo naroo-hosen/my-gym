@@ -120,6 +120,36 @@
         background: #ffecec;
         color: #b42318;
       }
+      .settings {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: center;
+        background: #f6f8fd;
+        border-radius: 16px;
+        padding: 12px 16px;
+      }
+      .settings-label {
+        font-weight: 600;
+        color: #4a5872;
+        font-size: 14px;
+      }
+      .settings input {
+        border: 1px solid #d6deef;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        background: #fff;
+      }
+      .settings button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: #1f2a3d;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -165,6 +195,17 @@
       </section>
 
       <div class="status" id="statusMessage">번호를 입력해주세요.</div>
+
+      <section class="settings">
+        <span class="settings-label">API 주소</span>
+        <input
+          id="apiBaseInput"
+          type="url"
+          placeholder="https://example.com"
+          aria-label="API 주소"
+        />
+        <button type="button" id="saveApiBase">저장</button>
+      </section>
     </main>
 
     <script>
@@ -174,6 +215,19 @@
       const backspace = document.getElementById("backspace");
       const clearButton = document.getElementById("clearButton");
       const checkInButton = document.getElementById("checkInButton");
+      const apiBaseInput = document.getElementById("apiBaseInput");
+      const saveApiBase = document.getElementById("saveApiBase");
+
+      const defaultApiBase = () => {
+        const params = new URLSearchParams(window.location.search);
+        return (
+          params.get("apiBase") ||
+          localStorage.getItem("checkinApiBase") ||
+          ""
+        );
+      };
+
+      apiBaseInput.value = defaultApiBase();
 
       const formatPhone = (value) => {
         const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -214,6 +268,17 @@
         phoneInput.value = formatPhone(phoneInput.value);
       });
 
+      saveApiBase.addEventListener("click", () => {
+        const value = apiBaseInput.value.trim();
+        if (value) {
+          localStorage.setItem("checkinApiBase", value);
+          setStatus("API 주소가 저장되었습니다.");
+        } else {
+          localStorage.removeItem("checkinApiBase");
+          setStatus("API 주소를 비웠습니다.");
+        }
+      });
+
       checkInButton.addEventListener("click", async () => {
         const phone = phoneInput.value.replace(/\D/g, "");
         if (!phone) {
@@ -225,7 +290,11 @@
         checkInButton.disabled = true;
 
         try {
-          const response = await fetch("/api/attendance/check-in", {
+          const apiBase = apiBaseInput.value.trim();
+          const endpoint = apiBase
+            ? `${apiBase.replace(/\/$/, "")}/api/attendance/check-in`
+            : "/api/attendance/check-in";
+          const response = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

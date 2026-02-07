@@ -490,6 +490,7 @@
           setStatus("네트워크 오류가 발생했습니다.", "error", true);
         } finally {
           checkInButton.disabled = false;
+          phoneInput.value = "";
         }
       });
     </script>

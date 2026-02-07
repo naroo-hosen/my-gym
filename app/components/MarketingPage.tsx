@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 
 type ExpiringMember = {
   id: number;
@@ -25,40 +28,12 @@ const formatDate = (value: string) => {
   return date.toLocaleDateString("ko-KR");
 };
 
-const renderTable = (members: ExpiringMember[]) => {
-  if (!members.length) {
-    return <p className="empty">해당 없음</p>;
-  }
-
-  return (
-    <div className="table-wrap">
-      <table className="member-table">
-        <thead>
-          <tr>
-            <th>이름</th>
-            <th>연락처</th>
-            <th className="number">만료일</th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((member) => (
-            <tr key={member.id}>
-              <td>{member.name}</td>
-              <td>{member.phone}</td>
-              <td className="number">{formatDate(member.expiresAt)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
 const MarketingPage = ({
   buckets,
   todayNewMembers,
   totalMembersWithMembership,
 }: MarketingPageProps) => {
+  const router = useRouter();
   const baseCount = Math.max(1, totalMembersWithMembership);
 
   return (
@@ -78,7 +53,34 @@ const MarketingPage = ({
               <h3>{bucket.label}</h3>
               <span className="count">{bucket.members.length}명</span>
             </div>
-            {renderTable(bucket.members)}
+            {bucket.members.length ? (
+              <div className="table-wrap">
+                <table className="member-table">
+                  <thead>
+                    <tr>
+                      <th>이름</th>
+                      <th>연락처</th>
+                      <th className="number">만료일</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bucket.members.map((member) => (
+                      <tr
+                        key={member.id}
+                        className="row"
+                        onClick={() => router.push(`/?memberId=${member.id}`)}
+                      >
+                        <td>{member.name}</td>
+                        <td>{member.phone}</td>
+                        <td className="number">{formatDate(member.expiresAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="empty">해당 없음</p>
+            )}
           </section>
         ))}
       </div>

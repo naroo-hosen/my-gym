@@ -12,6 +12,7 @@ type HomePageProps = {
     section?: string;
     membership?: string;
     status?: string;
+    memberId?: string;
   };
 };
 
@@ -39,6 +40,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     .filter(
       (value) => value === "ACTIVE" || value === "DELETE" || value === "PAUSED",
     );
+  const selectedMemberId =
+    typeof searchParams?.memberId === "string" &&
+    !Number.isNaN(Number(searchParams.memberId))
+      ? Number(searchParams.memberId)
+      : null;
 
   const statusConditions = statusFilters.length
     ? statusFilters.map((status) => {
@@ -362,6 +368,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           membershipFilter={membershipFilter}
           statusFilters={statusFilters}
           section={section}
+          selectedMemberId={selectedMemberId}
         />
       )}
     </main>

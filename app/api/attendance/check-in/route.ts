@@ -9,12 +9,12 @@ type CheckInRequestBody = {
 
 const buildCorsHeaders = (request: Request) => {
   const originHeader = request.headers.get("origin");
-  const origin =
-    originHeader && originHeader !== "null" ? originHeader : "*";
+  const origin = originHeader ?? "*";
   const requestedHeaders =
     request.headers.get("access-control-request-headers") ?? "Content-Type";
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin":
+      originHeader === "null" ? "null" : origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": requestedHeaders,
     "Access-Control-Max-Age": "86400",

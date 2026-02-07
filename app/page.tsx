@@ -3,6 +3,7 @@ import AttendancePage from "@/app/components/AttendancePage";
 import MarketingPage from "@/app/components/MarketingPage";
 import MemberPage from "@/app/components/MemberPage";
 import MembershipPage from "@/app/components/MembershipPage";
+import SalesPage from "@/app/components/SalesPage";
 import Sidebar from "@/app/components/Sidebar";
 
 type HomePageProps = {
@@ -27,6 +28,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         ? "attendance"
         : searchParams?.section === "marketing"
           ? "marketing"
+          : searchParams?.section === "sales"
+            ? "sales"
         : "member";
   const membershipFilter =
     searchParams?.membership === "with" || searchParams?.membership === "without"
@@ -78,6 +81,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
 
   const isAttendanceSection = section === "attendance";
   const isMarketingSection = section === "marketing";
+  const isSalesSection = section === "sales";
   const attendanceStart = new Date();
   attendanceStart.setHours(0, 0, 0, 0);
   attendanceStart.setDate(attendanceStart.getDate() - 13);
@@ -95,7 +99,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     totalMembersWithMembership,
   ] =
     await Promise.all([
-      isMarketingSection
+      isMarketingSection || isSalesSection
         ? Promise.resolve([])
         : prisma.member.findMany({
             where: {
@@ -129,7 +133,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: "desc",
             },
           }),
-      isMarketingSection
+      isMarketingSection || isSalesSection
         ? Promise.resolve([])
         : prisma.membership.findMany({
             orderBy: {
@@ -359,6 +363,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
           todayNewMembers={todayNewMembers}
           totalMembersWithMembership={totalMembersWithMembership}
         />
+      ) : section === "sales" ? (
+        <SalesPage />
       ) : (
         <MemberPage
           members={serializedMembers}

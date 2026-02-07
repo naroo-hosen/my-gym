@@ -14,10 +14,12 @@ const Sidebar = () => {
         ? "attendance"
         : searchParams.get("section") === "marketing"
           ? "marketing"
+          : searchParams.get("section") === "sales"
+            ? "sales"
         : "member";
 
   const handleNavigate = (
-    nextSection: "member" | "membership" | "attendance" | "marketing",
+    nextSection: "member" | "membership" | "attendance" | "marketing" | "sales",
   ) => {
     const params = new URLSearchParams(searchParams.toString());
 
@@ -31,6 +33,10 @@ const Sidebar = () => {
       params.delete("field");
     } else if (nextSection === "marketing") {
       params.set("section", "marketing");
+      params.delete("q");
+      params.delete("field");
+    } else if (nextSection === "sales") {
+      params.set("section", "sales");
       params.delete("q");
       params.delete("field");
     } else {
@@ -103,6 +109,15 @@ const Sidebar = () => {
             onClick={() => handleNavigate("marketing")}
           >
             마케팅
+          </button>
+        </div>
+        <div className="menu-group">
+          <button
+            className={`menu-item${section === "sales" ? " active" : ""}`}
+            type="button"
+            onClick={() => handleNavigate("sales")}
+          >
+            매출관리
           </button>
         </div>
       </nav>

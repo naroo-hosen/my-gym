@@ -207,6 +207,117 @@ p {
   color: #1f2937;
 }
 
+.sales {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sales-header h2 {
+  margin: 0 0 6px;
+}
+
+.sales-subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.sales-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.sales-form {
+  display: grid;
+  gap: 16px;
+}
+
+.sales-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.sales-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sales-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sales-search {
+  min-width: 200px;
+}
+
+.sales-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sales-summary-item {
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 12px 14px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sales-summary-item .label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sales-summary-item strong {
+  font-size: 18px;
+}
+
+.sales-summary-item .income {
+  color: #15803d;
+}
+
+.sales-summary-item .expense {
+  color: #b91c1c;
+}
+
+.sales-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sales-type.income {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sales-type.expense {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sales-table .sales-description {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;

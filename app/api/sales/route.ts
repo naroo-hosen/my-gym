@@ -91,3 +91,26 @@ export const POST = async (request: Request) => {
 
   return NextResponse.json(payload, { status: 201 });
 };
+
+export const DELETE = async (request: Request) => {
+  const { searchParams } = new URL(request.url);
+  const idParam = searchParams.get("id");
+  const id = Number(idParam);
+
+  if (!idParam || Number.isNaN(id)) {
+    return NextResponse.json({ message: "invalid_id" }, { status: 400 });
+  }
+
+  const existing = await prisma.salesEntry.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ message: "not_found" }, { status: 404 });
+  }
+
+  await prisma.salesEntry.delete({ where: { id } });
+
+  return NextResponse.json({ status: "deleted" });
+};

@@ -43,6 +43,7 @@ const SalesPage = () => {
   const [entries, setEntries] = useState<SalesEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [type, setType] = useState<SalesEntry["type"]>("income");
   const [date, setDate] = useState(getInputDate(new Date()));
   const [amount, setAmount] = useState("");
@@ -152,6 +153,27 @@ const SalesPage = () => {
       console.error(error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (entryId: number) => {
+    if (deletingId) return;
+
+    setDeletingId(entryId);
+    try {
+      const response = await fetch(`/api/sales?id=${entryId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete sales entry");
+      }
+
+      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -306,6 +328,7 @@ const SalesPage = () => {
                   <th className="number">금액</th>
                   <th>항목명</th>
                   <th>설명</th>
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody>
@@ -330,11 +353,21 @@ const SalesPage = () => {
                       <td className="sales-description">
                         {entry.description || "-"}
                       </td>
+                      <td>
+                        <button
+                          className="button-secondary"
+                          type="button"
+                          onClick={() => handleDelete(entry.id)}
+                          disabled={deletingId === entry.id}
+                        >
+                          {deletingId === entry.id ? "삭제 중..." : "삭제"}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="empty">
+                    <td colSpan={6} className="empty">
                       해당 기간에 등록된 매출 항목이 없습니다.
                     </td>
                   </tr>

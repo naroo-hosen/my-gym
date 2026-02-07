@@ -618,7 +618,7 @@ export const checkInMember = async (formData: FormData) => {
   const expiryDateOnly = new Date(expiryDate);
   expiryDateOnly.setHours(0, 0, 0, 0);
 
-  if (expiryDateOnly <= today) {
+  if (expiryDateOnly < today) {
     return { status: "expired" as const };
   }
 

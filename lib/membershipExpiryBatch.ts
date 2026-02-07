@@ -68,7 +68,8 @@ const getMembershipExpiryDate = (
 ) => {
   const nextExpiry = new Date(assignedAt);
   if (durationUnit === "DAY") {
-    nextExpiry.setDate(nextExpiry.getDate() + duration);
+    nextExpiry.setDate(nextExpiry.getDate() + Math.max(duration - 1, 0));
+    nextExpiry.setHours(23, 59, 59, 999);
     return nextExpiry;
   }
 

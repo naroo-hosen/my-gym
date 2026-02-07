@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { checkInMemberById } from "@/lib/attendance";
 
 type MemberActivityPayload = {
   memberId: number;
@@ -43,42 +44,6 @@ const getMembershipExpiryDate = (
 
   expiresAt.setMonth(expiresAt.getMonth() + duration);
   return expiresAt;
-};
-
-const getAdjustedExpiryDate = (
-  memberMembership: {
-    assignedAt: Date;
-    expiresAt: Date | null;
-    totalPausedMs: number;
-    membership: { duration: number; durationUnit: MembershipDurationUnit } | null;
-  },
-) => {
-  const baseExpiry =
-    memberMembership.expiresAt ??
-    (memberMembership.membership?.duration
-      ? getMembershipExpiryDate(
-          memberMembership.assignedAt,
-          memberMembership.membership.duration,
-          memberMembership.membership.durationUnit,
-        )
-      : null);
-  if (!baseExpiry) {
-    return null;
-  }
-  const adjusted = new Date(baseExpiry);
-  adjusted.setTime(baseExpiry.getTime() + memberMembership.totalPausedMs);
-  return adjusted;
-};
-
-const getWeekRange = (baseDate = new Date()) => {
-  const start = new Date(baseDate);
-  const day = start.getDay();
-  const diff = (day + 6) % 7;
-  start.setDate(start.getDate() - diff);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 7);
-  return { start, end };
 };
 
 type PrismaClientLike = Prisma.TransactionClient | typeof prisma;
@@ -576,110 +541,11 @@ export const checkInMember = async (formData: FormData) => {
     return { status: "invalid" as const };
   }
 
-  const memberMembership = await prisma.memberMembership.findUnique({
-    where: { memberId },
-    include: {
-      membership: true,
-      member: {
-        select: { status: true },
-      },
-    },
-  });
-
-  if (
-    !memberMembership ||
-    memberMembership.member.status === "DELETE" ||
-    !memberMembership.membership ||
-    memberMembership.membership.status === "DELETE" ||
-    memberMembership.pausedAt
-  ) {
-    return { status: "invalid" as const };
+  const result = await checkInMemberById(prisma, memberId);
+  if (result.status === "ok") {
+    revalidatePath("/");
   }
-
-  const expiryDate = getAdjustedExpiryDate({
-    assignedAt: memberMembership.assignedAt,
-    expiresAt: memberMembership.expiresAt,
-    totalPausedMs: memberMembership.totalPausedMs,
-    membership: memberMembership.membership
-      ? {
-          duration: memberMembership.membership.duration,
-          durationUnit:
-            memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
-        }
-      : null,
-  });
-
-  if (!expiryDate) {
-    return { status: "invalid" as const };
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiryDateOnly = new Date(expiryDate);
-  expiryDateOnly.setHours(0, 0, 0, 0);
-
-  if (expiryDateOnly < today) {
-    return { status: "expired" as const };
-  }
-
-  const todayEnd = new Date(today);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-  const todayAttendanceCount = await prisma.memberActivity.count({
-    where: {
-      memberId,
-      type: "attendance_checked",
-      createdAt: {
-        gte: today,
-        lt: todayEnd,
-      },
-    },
-  });
-
-  if (todayAttendanceCount > 0) {
-    return { status: "already_checked" as const };
-  }
-
-  const { start, end } = getWeekRange();
-  const latestMembershipAssigned = await prisma.memberActivity.findFirst({
-    where: {
-      memberId,
-      type: "membership_assigned",
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    select: {
-      createdAt: true,
-    },
-  });
-  const assignedAt = latestMembershipAssigned?.createdAt ?? memberMembership.assignedAt;
-  const attendanceCount = await prisma.memberActivity.count({
-    where: {
-      memberId,
-      type: "attendance_checked",
-      createdAt: {
-        gte: assignedAt > start ? assignedAt : start,
-        lt: end,
-      },
-    },
-  });
-
-  if (attendanceCount >= memberMembership.membership.weeklyAttendance) {
-    return { status: "limit" as const };
-  }
-
-  await createMemberActivity(prisma, {
-    memberId,
-    type: "attendance_checked",
-    description: "출석 체크",
-    metadata: {
-      weeklyAttendance: memberMembership.membership.weeklyAttendance,
-      attendanceCount: attendanceCount + 1,
-    },
-  });
-
-  revalidatePath("/");
-  return { status: "ok" as const };
+  return result;
 };
 
 export const createMembership = async (formData: FormData) => {

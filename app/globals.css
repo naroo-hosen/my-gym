@@ -330,6 +330,12 @@ section {
   z-index: 1;
 }
 
+.attendance-header.attendance-date-row .attendance-cell {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .attendance-cell {
   padding: 12px 16px;
   border-right: 1px solid #e5e7eb;

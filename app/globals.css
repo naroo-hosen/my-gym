@@ -356,6 +356,22 @@ section {
   min-height: 56px;
 }
 
+.attendance-row.is-clickable {
+  cursor: pointer;
+}
+
+.attendance-row.is-clickable:hover .attendance-cell {
+  background: #f3f4f6;
+}
+
+.attendance-row.is-selected .attendance-cell {
+  background: #e0e7ff;
+}
+
+.attendance-row.is-selected .attendance-cell.is-current-week {
+  background: #c7d2fe;
+}
+
 .attendance-date-row {
   grid-template-columns: repeat(14, minmax(96px, 1fr));
 }

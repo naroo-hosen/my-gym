@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AttendanceActivity = {
   createdAt: string;
@@ -73,6 +73,13 @@ const formatMembershipDuration = (
   return `${durationLabel} (${weeklyAttendance}회)`;
 };
 
+const formatDateValue = (value: string | null) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString("ko-KR");
+};
+
 const AttendancePage = ({ members }: AttendancePageProps) => {
   const { lastWeekDates, thisWeekDates } = buildWeekRanges();
   const todayKey = useMemo(() => {
@@ -82,6 +89,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
   }, []);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const todayCellRef = useRef<HTMLDivElement | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const lastWeekLabel =
     lastWeekDates.length > 0
       ? `${formatDateLabel(lastWeekDates[0])} ~ ${formatDateLabel(
@@ -141,6 +149,38 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       absentCount,
     };
   }, [members, thisWeekDates, todayKey]);
+  const selectedMember = useMemo(
+    () => members.find((member) => member.id === selectedMemberId) ?? null,
+    [members, selectedMemberId],
+  );
+  const selectedMemberAttendance = useMemo(() => {
+    if (!selectedMember) return null;
+    const attendanceDates = selectedMember.activities.map((activity) => {
+      const activityDate = new Date(activity.createdAt);
+      activityDate.setHours(0, 0, 0, 0);
+      return formatDateKey(activityDate);
+    });
+    const attendanceSet = new Set(attendanceDates);
+    const thisWeekAttendanceCount = thisWeekDates.reduce((count, date) => {
+      const key = formatDateKey(date);
+      return attendanceSet.has(key) ? count + 1 : count;
+    }, 0);
+    const latestAttendance = selectedMember.activities.reduce<string | null>(
+      (latest, activity) => {
+        if (!latest) return activity.createdAt;
+        return new Date(activity.createdAt) > new Date(latest)
+          ? activity.createdAt
+          : latest;
+      },
+      null,
+    );
+
+    return {
+      todayAttendance: attendanceSet.has(todayKey),
+      thisWeekAttendanceCount,
+      latestAttendance,
+    };
+  }, [selectedMember, thisWeekDates, todayKey]);
 
   useEffect(() => {
     if (!scrollContainerRef.current || !todayCellRef.current) {
@@ -250,8 +290,31 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             <div className="attendance-cell">연락처</div>
             <div className="attendance-cell">회원권</div>
           </div>
-          {members.map((member) => (
-            <div key={member.id} className="attendance-row">
+          {members.map((member) => {
+            const isSelected = selectedMemberId === member.id;
+            return (
+              <div
+                key={member.id}
+                className={`attendance-row is-clickable${
+                  isSelected ? " is-selected" : ""
+                }`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedMemberId((prev) =>
+                    prev === member.id ? null : member.id,
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedMemberId((prev) =>
+                      prev === member.id ? null : member.id,
+                    );
+                  }
+                }}
+              >
               <div className="attendance-cell">{member.name}</div>
               <div className="attendance-cell">{member.phone}</div>
               <div className="attendance-cell">
@@ -261,8 +324,9 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                   member.membershipWeeklyAttendance,
                 )}
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         <div className="attendance-scroll" ref={scrollContainerRef}>
@@ -323,11 +387,30 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                   return formatDateKey(activityDate);
                 }),
               );
+              const isSelected = selectedMemberId === member.id;
 
               return (
                 <div
                   key={member.id}
-                  className="attendance-row attendance-date-row"
+                  className={`attendance-row attendance-date-row is-clickable${
+                    isSelected ? " is-selected" : ""
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    setSelectedMemberId((prev) =>
+                      prev === member.id ? null : member.id,
+                    )
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedMemberId((prev) =>
+                        prev === member.id ? null : member.id,
+                      );
+                    }
+                  }}
                 >
                   {allDates.map((date, index) => {
                     const dateKey = formatDateKey(date);
@@ -349,6 +432,67 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             })}
           </div>
         </div>
+      </div>
+
+      <div className={`panel detail-panel${selectedMember ? " is-open" : ""}`}>
+        {selectedMember && (
+          <>
+            <div className="panel-header">
+              <div>
+                <h3 className="section-title">회원 상세</h3>
+                <p className="section-subtitle">
+                  선택한 회원의 출석 정보를 확인합니다.
+                </p>
+              </div>
+            </div>
+            <div className="detail-grid">
+              <div className="detail-item">
+                <span className="detail-label">이름</span>
+                <strong>{selectedMember.name}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">연락처</span>
+                <strong>{selectedMember.phone}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">회원권</span>
+                <strong>
+                  {formatMembershipDuration(
+                    selectedMember.membershipDuration,
+                    selectedMember.membershipDurationUnit,
+                    selectedMember.membershipWeeklyAttendance,
+                  )}
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">회원권 시작일</span>
+                <strong>{formatDateValue(selectedMember.membershipAssignedAt)}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">오늘 출석</span>
+                <strong>
+                  {selectedMemberAttendance?.todayAttendance ? "출석" : "미출석"}
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">이번주 출석 횟수</span>
+                <strong>
+                  {selectedMemberAttendance?.thisWeekAttendanceCount ?? 0}회
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">최근 출석일</span>
+                <strong>
+                  {formatDateValue(selectedMemberAttendance?.latestAttendance ?? null)}
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">최근 2주 출석 횟수</span>
+                <strong>{selectedMember.activities.length}회</strong>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

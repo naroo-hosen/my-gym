@@ -248,11 +248,14 @@
         return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
       };
 
-      const setStatus = (message, type) => {
+      const setStatus = (message, type, showAlert = false) => {
         statusMessage.textContent = message;
         statusMessage.classList.remove("success", "error");
         if (type) {
           statusMessage.classList.add(type);
+        }
+        if (showAlert) {
+          alert(message);
         }
       };
 
@@ -316,39 +319,51 @@
           const data = await response.json();
 
           if (!response.ok) {
-            setStatus("출석체크에 실패했습니다. 다시 시도해주세요.", "error");
+            setStatus(
+              "출석체크에 실패했습니다. 다시 시도해주세요.",
+              "error",
+              true,
+            );
             return;
           }
 
           if (data?.message) {
-            setStatus(data.message, data.status === "ok" ? "success" : "error");
+            setStatus(
+              data.message,
+              data.status === "ok" ? "success" : "error",
+              true,
+            );
             return;
           }
 
           switch (data.status) {
             case "ok":
-              setStatus(`${data.member?.name ?? "회원"}님 출석 완료!`, "success");
+              setStatus(
+                `${data.member?.name ?? "회원"}님 출석 완료!`,
+                "success",
+                true,
+              );
               break;
             case "already_checked":
-              setStatus("오늘은 이미 출석체크를 완료했습니다.", "error");
+              setStatus("오늘은 이미 출석체크를 완료했습니다.", "error", true);
               break;
             case "limit":
-              setStatus("이번 주 출석 가능 횟수를 초과했습니다.", "error");
+              setStatus("이번 주 출석 가능 횟수를 초과했습니다.", "error", true);
               break;
             case "expired":
-              setStatus("회원권이 만료되었습니다.", "error");
+              setStatus("회원권이 만료되었습니다.", "error", true);
               break;
             case "not_found":
-              setStatus("등록된 회원을 찾을 수 없습니다.", "error");
+              setStatus("등록된 회원을 찾을 수 없습니다.", "error", true);
               break;
             case "no_membership":
-              setStatus("회원권이 없습니다.", "error");
+              setStatus("회원권이 없습니다.", "error", true);
               break;
             default:
-              setStatus("출석체크가 완료되지 않았습니다.", "error");
+              setStatus("출석체크가 완료되지 않았습니다.", "error", true);
           }
         } catch (error) {
-          setStatus("네트워크 오류가 발생했습니다.", "error");
+          setStatus("네트워크 오류가 발생했습니다.", "error", true);
         } finally {
           checkInButton.disabled = false;
         }

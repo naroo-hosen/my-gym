@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>출석 체크</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic",
+          system-ui, sans-serif;
+        background: #f4f6fb;
+        color: #1f2a3d;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(720px, 100%);
+        background: #fff;
+        border-radius: 32px;
+        box-shadow: 0 28px 60px rgba(20, 30, 55, 0.15);
+        padding: 32px;
+        display: grid;
+        gap: 24px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: clamp(24px, 3vw, 32px);
+      }
+      header p {
+        margin: 8px 0 0;
+        color: #5a677e;
+      }
+      .display {
+        background: #f0f3fa;
+        border-radius: 18px;
+        padding: 18px 20px;
+        font-size: clamp(20px, 2.5vw, 28px);
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 64px;
+      }
+      .display input {
+        border: none;
+        background: transparent;
+        font-size: inherit;
+        width: 100%;
+        outline: none;
+      }
+      .display button {
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+        color: #7280a0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .dial {
+        border: none;
+        background: #eef2fb;
+        border-radius: 16px;
+        padding: 18px;
+        font-size: 24px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.05s ease, background 0.2s ease;
+      }
+      .dial:active {
+        transform: scale(0.97);
+        background: #dfe7f6;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+      }
+      .summary-card {
+        background: #f6f8fd;
+        border-radius: 16px;
+        padding: 14px 16px;
+        display: grid;
+        gap: 6px;
+      }
+      .summary-title {
+        font-size: 13px;
+        color: #6b7a96;
+      }
+      .summary-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2a3d;
+      }
+      .action {
+        border: none;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .action.primary {
+        background: #2f6bff;
+        color: #fff;
+      }
+      .action.secondary {
+        background: #f0f3fa;
+        color: #4a5872;
+      }
+      .status {
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: #f8f9fd;
+        color: #4a5872;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+      }
+      .status.success {
+        background: #e8f6ee;
+        color: #1f7a46;
+      }
+      .status.error {
+        background: #ffecec;
+        color: #b42318;
+      }
+      .settings {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: center;
+        background: #f6f8fd;
+        border-radius: 16px;
+        padding: 12px 16px;
+      }
+      .settings-label {
+        font-weight: 600;
+        color: #4a5872;
+        font-size: 14px;
+      }
+      .settings input {
+        border: 1px solid #d6deef;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        background: #fff;
+      }
+      .settings button {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: #1f2a3d;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 1000;
+      }
+      .modal.is-open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .modal-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        width: min(420px, 90vw);
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        display: grid;
+        gap: 16px;
+        text-align: center;
+      }
+      .modal-card h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .modal-card p {
+        margin: 0;
+        color: #4a5872;
+        font-size: 16px;
+      }
+      .modal-card button {
+        border: none;
+        border-radius: 12px;
+        padding: 12px 16px;
+        background: #2f6bff;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="display">
+        <input
+          id="phoneInput"
+          type="tel"
+          inputmode="numeric"
+          placeholder="010-1234-5678"
+          aria-label="휴대폰 번호"
+        />
+        <button type="button" id="backspace" aria-label="한 글자 지우기">
+          ⌫
+        </button>
+      </div>
+
+      <section class="grid" aria-label="전화번호 다이얼">
+        <button class="dial" data-value="1">1</button>
+        <button class="dial" data-value="2">2</button>
+        <button class="dial" data-value="3">3</button>
+        <button class="dial" data-value="4">4</button>
+        <button class="dial" data-value="5">5</button>
+        <button class="dial" data-value="6">6</button>
+        <button class="dial" data-value="7">7</button>
+        <button class="dial" data-value="8">8</button>
+        <button class="dial" data-value="9">9</button>
+        <button class="dial" data-value="0">0</button>
+      </section>
+
+      <section class="summary" aria-label="회원권 정보">
+        <div class="summary-card">
+          <span class="summary-title">회원권 남은 일수</span>
+          <strong class="summary-value" id="daysRemaining">-</strong>
+        </div>
+        <div class="summary-card">
+          <span class="summary-title">이번 주 출석</span>
+          <strong class="summary-value" id="weeklyAttendance">-</strong>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button class="action secondary" type="button" id="clearButton">
+          전체 지우기
+        </button>
+        <button class="action primary" type="button" id="checkInButton">
+          출석체크
+        </button>
+      </section>
+
+      <div class="status" id="statusMessage">번호를 입력해주세요.</div>
+
+      <section class="settings">
+        <span class="settings-label">API 주소</span>
+        <input
+          id="apiBaseInput"
+          type="text"
+          placeholder="example.com"
+          aria-label="API 주소"
+        />
+        <button type="button" id="saveApiBase">저장</button>
+      </section>
+    </main>
+
+    <div class="modal" id="modal">
+      <div class="modal-card" role="dialog" aria-modal="true">
+        <h2 id="modalTitle">알림</h2>
+        <p id="modalMessage">출석체크 결과를 확인하세요.</p>
+        <button type="button" id="modalClose">확인</button>
+      </div>
+    </div>
+
+    <script>
+      const phoneInput = document.getElementById("phoneInput");
+      const statusMessage = document.getElementById("statusMessage");
+      const dialButtons = document.querySelectorAll(".dial");
+      const backspace = document.getElementById("backspace");
+      const clearButton = document.getElementById("clearButton");
+      const checkInButton = document.getElementById("checkInButton");
+      const apiBaseInput = document.getElementById("apiBaseInput");
+      const saveApiBase = document.getElementById("saveApiBase");
+      const modal = document.getElementById("modal");
+      const modalMessage = document.getElementById("modalMessage");
+      const modalClose = document.getElementById("modalClose");
+      const daysRemaining = document.getElementById("daysRemaining");
+      const weeklyAttendance = document.getElementById("weeklyAttendance");
+
+      const normalizeApiBase = (value) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return "";
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+          return trimmed.replace(/\/$/, "");
+        }
+        return `https://${trimmed.replace(/\/$/, "")}`;
+      };
+
+      const defaultApiBase = () => {
+        const params = new URLSearchParams(window.location.search);
+        return (
+          params.get("apiBase") ||
+          localStorage.getItem("checkinApiBase") ||
+          ""
+        );
+      };
+
+      apiBaseInput.value = defaultApiBase();
+
+      const formatPhone = (value) => {
+        const digits = value.replace(/\D/g, "").slice(0, 11);
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 7)
+          return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      };
+
+      const setStatus = (message, type, showModal = false) => {
+        statusMessage.textContent = message;
+        statusMessage.classList.remove("success", "error");
+        if (type) {
+          statusMessage.classList.add(type);
+        }
+        if (showModal) {
+          modalMessage.textContent = message;
+          modal.classList.add("is-open");
+        }
+      };
+
+      const setSummary = (summary) => {
+        if (!summary) {
+          daysRemaining.textContent = "-";
+          weeklyAttendance.textContent = "-";
+          return;
+        }
+        const daysText =
+          typeof summary.daysRemaining === "number"
+            ? `${summary.daysRemaining}일`
+            : "-";
+        const weeklyText =
+          typeof summary.weeklyAttendanceCount === "number" &&
+          typeof summary.weeklyAttendanceLimit === "number"
+            ? `${summary.weeklyAttendanceCount} / ${summary.weeklyAttendanceLimit}회`
+            : "-";
+        daysRemaining.textContent = daysText;
+        weeklyAttendance.textContent = weeklyText;
+      };
+
+      const closeModal = () => {
+        modal.classList.remove("is-open");
+      };
+
+      modalClose.addEventListener("click", closeModal);
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+
+      const appendDigit = (digit) => {
+        const nextValue = formatPhone(phoneInput.value + digit);
+        phoneInput.value = nextValue;
+      };
+
+      dialButtons.forEach((button) => {
+        button.addEventListener("click", () => appendDigit(button.dataset.value));
+      });
+
+      backspace.addEventListener("click", () => {
+        const digits = phoneInput.value.replace(/\D/g, "");
+        phoneInput.value = formatPhone(digits.slice(0, -1));
+      });
+
+      clearButton.addEventListener("click", () => {
+        phoneInput.value = "";
+        setStatus("번호를 입력해주세요.");
+      });
+
+      phoneInput.addEventListener("input", () => {
+        phoneInput.value = formatPhone(phoneInput.value);
+      });
+
+      saveApiBase.addEventListener("click", () => {
+        const normalized = normalizeApiBase(apiBaseInput.value);
+        if (normalized) {
+          localStorage.setItem("checkinApiBase", normalized);
+          apiBaseInput.value = normalized;
+          setStatus("API 주소가 저장되었습니다.");
+        } else {
+          localStorage.removeItem("checkinApiBase");
+          setStatus("API 주소를 비웠습니다.");
+        }
+      });
+
+      checkInButton.addEventListener("click", async () => {
+        const phone = phoneInput.value.replace(/\D/g, "");
+        if (!phone) {
+          setStatus("휴대폰 번호를 입력해주세요.", "error");
+          return;
+        }
+
+        setStatus("출석체크 중입니다...");
+        checkInButton.disabled = true;
+
+        try {
+          const apiBase = normalizeApiBase(apiBaseInput.value);
+          const endpoint = apiBase
+            ? `${apiBase}/api/attendance/check-in`
+            : "/api/attendance/check-in";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await response.json();
+
+          if (data?.summary !== undefined) {
+            setSummary(data.summary);
+          }
+
+          if (data?.message) {
+            setStatus(
+              data.message,
+              data.status === "ok" ? "success" : "error",
+              true,
+            );
+            return;
+          }
+
+          if (!response.ok) {
+            setStatus(
+              "출석체크에 실패했습니다. 다시 시도해주세요.",
+              "error",
+              true,
+            );
+            return;
+          }
+
+          switch (data.status) {
+            case "ok":
+              setStatus(
+                `${data.member?.name ?? "회원"}님 출석 완료!`,
+                "success",
+                true,
+              );
+              break;
+            case "already_checked":
+              setStatus("오늘은 이미 출석체크를 완료했습니다.", "error", true);
+              break;
+            case "limit":
+              setStatus("이번 주 출석 가능 횟수를 초과했습니다.", "error", true);
+              break;
+            case "expired":
+              setStatus("회원권이 만료되었습니다.", "error", true);
+              break;
+            case "not_found":
+              setStatus("등록된 회원을 찾을 수 없습니다.", "error", true);
+              break;
+            case "no_membership":
+              setStatus("회원권이 없습니다.", "error", true);
+              break;
+            default:
+              setStatus("출석체크가 완료되지 않았습니다.", "error", true);
+          }
+        } catch (error) {
+          setStatus("네트워크 오류가 발생했습니다.", "error", true);
+        } finally {
+          checkInButton.disabled = false;
+          phoneInput.value = "";
+        }
+      });
+    </script>
+  </body>
+</html>

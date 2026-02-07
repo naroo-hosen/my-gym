@@ -44,17 +44,29 @@ export const POST = async (request: Request) => {
     );
   }
 
-  const phone = body?.phone?.toString().trim();
-  if (!phone) {
+  const rawPhone = body?.phone?.toString().trim();
+  if (!rawPhone) {
     return NextResponse.json(
       { status: "invalid" },
       { status: 400, headers: corsHeaders },
     );
   }
+  const digitsOnly = rawPhone.replace(/\D/g, "");
+  const formattedPhone =
+    digitsOnly.length === 11
+      ? `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 7)}-${digitsOnly.slice(7)}`
+      : digitsOnly.length === 10
+        ? `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`
+        : rawPhone;
+  const phoneCandidates = Array.from(
+    new Set([rawPhone, digitsOnly, formattedPhone].filter(Boolean)),
+  );
 
   const member = await prisma.member.findFirst({
     where: {
-      phone,
+      phone: {
+        in: phoneCandidates,
+      },
       status: {
         not: "DELETE",
       },

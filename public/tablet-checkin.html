@@ -200,8 +200,8 @@
         <span class="settings-label">API 주소</span>
         <input
           id="apiBaseInput"
-          type="url"
-          placeholder="https://example.com"
+          type="text"
+          placeholder="example.com"
           aria-label="API 주소"
         />
         <button type="button" id="saveApiBase">저장</button>
@@ -217,6 +217,17 @@
       const checkInButton = document.getElementById("checkInButton");
       const apiBaseInput = document.getElementById("apiBaseInput");
       const saveApiBase = document.getElementById("saveApiBase");
+
+      const normalizeApiBase = (value) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return "";
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+          return trimmed.replace(/\/$/, "");
+        }
+        return `https://${trimmed.replace(/\/$/, "")}`;
+      };
 
       const defaultApiBase = () => {
         const params = new URLSearchParams(window.location.search);
@@ -269,9 +280,10 @@
       });
 
       saveApiBase.addEventListener("click", () => {
-        const value = apiBaseInput.value.trim();
-        if (value) {
-          localStorage.setItem("checkinApiBase", value);
+        const normalized = normalizeApiBase(apiBaseInput.value);
+        if (normalized) {
+          localStorage.setItem("checkinApiBase", normalized);
+          apiBaseInput.value = normalized;
           setStatus("API 주소가 저장되었습니다.");
         } else {
           localStorage.removeItem("checkinApiBase");
@@ -290,9 +302,9 @@
         checkInButton.disabled = true;
 
         try {
-          const apiBase = apiBaseInput.value.trim();
+          const apiBase = normalizeApiBase(apiBaseInput.value);
           const endpoint = apiBase
-            ? `${apiBase.replace(/\/$/, "")}/api/attendance/check-in`
+            ? `${apiBase}/api/attendance/check-in`
             : "/api/attendance/check-in";
           const response = await fetch(endpoint, {
             method: "POST",

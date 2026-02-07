@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type SalesEntry = {
   id: number;
@@ -41,6 +41,8 @@ const formatCurrency = (amount: number) =>
 const SalesPage = () => {
   const defaultRange = useMemo(() => createDefaultRange(), []);
   const [entries, setEntries] = useState<SalesEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [type, setType] = useState<SalesEntry["type"]>("income");
   const [date, setDate] = useState(getInputDate(new Date()));
   const [amount, setAmount] = useState("");
@@ -49,6 +51,35 @@ const SalesPage = () => {
   const [startDate, setStartDate] = useState(defaultRange.start);
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEntries = async () => {
+      try {
+        const response = await fetch("/api/sales");
+        if (!response.ok) {
+          throw new Error("Failed to load sales entries");
+        }
+        const data = (await response.json()) as SalesEntry[];
+        if (isMounted) {
+          setEntries(data);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadEntries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredEntries = useMemo(() => {
     const start = toDate(startDate);
@@ -84,7 +115,7 @@ const SalesPage = () => {
 
   const netTotal = stats.income - stats.expense;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const numericAmount = Number(amount);
@@ -92,21 +123,36 @@ const SalesPage = () => {
       return;
     }
 
-    setEntries((prev) => [
-      {
-        id: Date.now(),
-        type,
-        date,
-        amount: Math.abs(numericAmount),
-        title: title.trim(),
-        description: description.trim(),
-      },
-      ...prev,
-    ]);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/sales", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          date,
+          amount: Math.abs(numericAmount),
+          title: title.trim(),
+          description: description.trim(),
+        }),
+      });
 
-    setAmount("");
-    setTitle("");
-    setDescription("");
+      if (!response.ok) {
+        throw new Error("Failed to save sales entry");
+      }
+
+      const created = (await response.json()) as SalesEntry;
+      setEntries((prev) => [created, ...prev]);
+      setAmount("");
+      setTitle("");
+      setDescription("");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -185,8 +231,12 @@ const SalesPage = () => {
               />
             </div>
             <div className="sales-form-actions">
-              <button className="button-primary" type="submit">
-                항목 추가
+              <button
+                className="button-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "저장 중..." : "항목 추가"}
               </button>
             </div>
           </form>
@@ -195,7 +245,9 @@ const SalesPage = () => {
         <section className="panel">
           <div className="panel-header">
             <h3>매출 조회</h3>
-            <span className="count">{filteredEntries.length}건</span>
+            <span className="count">
+              {isLoading ? "불러오는 중..." : `${filteredEntries.length}건`}
+            </span>
           </div>
           <div className="sales-filters">
             <div>

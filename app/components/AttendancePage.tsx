@@ -95,6 +95,52 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         )}`
       : "";
   const allDates = [...lastWeekDates, ...thisWeekDates];
+  const attendanceSummary = useMemo(() => {
+    const totalMembers = members.length;
+    const thisWeekKeys = new Set(
+      thisWeekDates.map((date) => formatDateKey(date)),
+    );
+    let todayCount = 0;
+    let thisWeekCount = 0;
+
+    members.forEach((member) => {
+      const attendanceDates = new Set(
+        member.activities.map((activity) => {
+          const activityDate = new Date(activity.createdAt);
+          activityDate.setHours(0, 0, 0, 0);
+          return formatDateKey(activityDate);
+        }),
+      );
+
+      if (attendanceDates.has(todayKey)) {
+        todayCount += 1;
+      }
+
+      const hasThisWeekAttendance = Array.from(thisWeekKeys).some((key) =>
+        attendanceDates.has(key),
+      );
+      if (hasThisWeekAttendance) {
+        thisWeekCount += 1;
+      }
+    });
+
+    const todayRate = totalMembers
+      ? Math.round((todayCount / totalMembers) * 100)
+      : 0;
+    const thisWeekRate = totalMembers
+      ? Math.round((thisWeekCount / totalMembers) * 100)
+      : 0;
+    const absentCount = totalMembers - todayCount;
+
+    return {
+      totalMembers,
+      todayCount,
+      todayRate,
+      thisWeekCount,
+      thisWeekRate,
+      absentCount,
+    };
+  }, [members, thisWeekDates, todayKey]);
 
   useEffect(() => {
     if (!scrollContainerRef.current || !todayCellRef.current) {
@@ -115,6 +161,79 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           <p className="section-subtitle">
             회원권 보유 및 일시정지 상태가 아닌 회원의 최근 1주일 출석 기록을
             확인합니다.
+          </p>
+        </div>
+      </div>
+
+      <div className="attendance-summary">
+        <div className="attendance-summary-card">
+          <div className="attendance-summary-header">
+            <span className="attendance-summary-title">오늘 출석자 수</span>
+            <span className="attendance-summary-value">
+              {attendanceSummary.todayCount}명
+            </span>
+          </div>
+          <div className="attendance-summary-bar">
+            <div
+              className="attendance-summary-bar-fill"
+              style={{ width: `${attendanceSummary.todayRate}%` }}
+            />
+          </div>
+          <p className="attendance-summary-meta">
+            출석률 {attendanceSummary.todayRate}%
+          </p>
+        </div>
+        <div className="attendance-summary-card">
+          <div className="attendance-summary-header">
+            <span className="attendance-summary-title">출석률</span>
+            <span className="attendance-summary-value">
+              {attendanceSummary.todayRate}%
+            </span>
+          </div>
+          <div className="attendance-summary-bar">
+            <div
+              className="attendance-summary-bar-fill is-accent"
+              style={{ width: `${attendanceSummary.todayRate}%` }}
+            />
+          </div>
+          <p className="attendance-summary-meta">
+            오늘 출석자 {attendanceSummary.todayCount} /{" "}
+            {attendanceSummary.totalMembers}
+          </p>
+        </div>
+        <div className="attendance-summary-card">
+          <div className="attendance-summary-header">
+            <span className="attendance-summary-title">주간 출석률</span>
+            <span className="attendance-summary-value">
+              {attendanceSummary.thisWeekRate}%
+            </span>
+          </div>
+          <div className="attendance-summary-bar">
+            <div
+              className="attendance-summary-bar-fill is-weekly"
+              style={{ width: `${attendanceSummary.thisWeekRate}%` }}
+            />
+          </div>
+          <p className="attendance-summary-meta">
+            이번주 출석자 {attendanceSummary.thisWeekCount} /{" "}
+            {attendanceSummary.totalMembers}
+          </p>
+        </div>
+        <div className="attendance-summary-card">
+          <div className="attendance-summary-header">
+            <span className="attendance-summary-title">미출석자 수</span>
+            <span className="attendance-summary-value">
+              {attendanceSummary.absentCount}명
+            </span>
+          </div>
+          <div className="attendance-summary-bar">
+            <div
+              className="attendance-summary-bar-fill is-muted"
+              style={{ width: `${100 - attendanceSummary.todayRate}%` }}
+            />
+          </div>
+          <p className="attendance-summary-meta">
+            오늘 미출석 {attendanceSummary.absentCount}명
           </p>
         </div>
       </div>

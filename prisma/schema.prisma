@@ -58,3 +58,15 @@ model MemberActivity {
 
   @@index([memberId, createdAt])
 }
+
+model SalesEntry {
+  id          Int      @id @default(autoincrement())
+  type        String
+  date        DateTime
+  amount      Int
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([date, type])
+}

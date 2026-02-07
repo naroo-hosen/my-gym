@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type SalesEntry = {
   id: number;
@@ -41,6 +41,10 @@ const formatCurrency = (amount: number) =>
 const SalesPage = () => {
   const defaultRange = useMemo(() => createDefaultRange(), []);
   const [entries, setEntries] = useState<SalesEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SalesEntry | null>(null);
   const [type, setType] = useState<SalesEntry["type"]>("income");
   const [date, setDate] = useState(getInputDate(new Date()));
   const [amount, setAmount] = useState("");
@@ -49,6 +53,35 @@ const SalesPage = () => {
   const [startDate, setStartDate] = useState(defaultRange.start);
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEntries = async () => {
+      try {
+        const response = await fetch("/api/sales");
+        if (!response.ok) {
+          throw new Error("Failed to load sales entries");
+        }
+        const data = (await response.json()) as SalesEntry[];
+        if (isMounted) {
+          setEntries(data);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadEntries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredEntries = useMemo(() => {
     const start = toDate(startDate);
@@ -84,7 +117,7 @@ const SalesPage = () => {
 
   const netTotal = stats.income - stats.expense;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const numericAmount = Number(amount);
@@ -92,21 +125,67 @@ const SalesPage = () => {
       return;
     }
 
-    setEntries((prev) => [
-      {
-        id: Date.now(),
-        type,
-        date,
-        amount: Math.abs(numericAmount),
-        title: title.trim(),
-        description: description.trim(),
-      },
-      ...prev,
-    ]);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/sales", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          date,
+          amount: Math.abs(numericAmount),
+          title: title.trim(),
+          description: description.trim(),
+        }),
+      });
 
-    setAmount("");
-    setTitle("");
-    setDescription("");
+      if (!response.ok) {
+        throw new Error("Failed to save sales entry");
+      }
+
+      const created = (await response.json()) as SalesEntry;
+      setEntries((prev) => [created, ...prev]);
+      setAmount("");
+      setTitle("");
+      setDescription("");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async (entryId: number) => {
+    if (deletingId) return;
+
+    setDeletingId(entryId);
+    try {
+      const response = await fetch(`/api/sales?id=${entryId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete sales entry");
+      }
+
+      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDeletingId(null);
+      setPendingDelete(null);
+    }
+  };
+
+  const handleDeleteClick = (entry: SalesEntry) => {
+    setPendingDelete(entry);
+  };
+
+  const handleDeleteCancel = () => {
+    if (deletingId) return;
+    setPendingDelete(null);
   };
 
   return (
@@ -185,8 +264,12 @@ const SalesPage = () => {
               />
             </div>
             <div className="sales-form-actions">
-              <button className="button-primary" type="submit">
-                항목 추가
+              <button
+                className="button-primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "저장 중..." : "항목 추가"}
               </button>
             </div>
           </form>
@@ -195,7 +278,9 @@ const SalesPage = () => {
         <section className="panel">
           <div className="panel-header">
             <h3>매출 조회</h3>
-            <span className="count">{filteredEntries.length}건</span>
+            <span className="count">
+              {isLoading ? "불러오는 중..." : `${filteredEntries.length}건`}
+            </span>
           </div>
           <div className="sales-filters">
             <div>
@@ -254,6 +339,7 @@ const SalesPage = () => {
                   <th className="number">금액</th>
                   <th>항목명</th>
                   <th>설명</th>
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,11 +364,21 @@ const SalesPage = () => {
                       <td className="sales-description">
                         {entry.description || "-"}
                       </td>
+                      <td>
+                        <button
+                          className="button-secondary"
+                          type="button"
+                          onClick={() => handleDeleteClick(entry)}
+                          disabled={deletingId === entry.id}
+                        >
+                          삭제
+                        </button>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="empty">
+                    <td colSpan={6} className="empty">
                       해당 기간에 등록된 매출 항목이 없습니다.
                     </td>
                   </tr>
@@ -292,6 +388,35 @@ const SalesPage = () => {
           </div>
         </section>
       </div>
+      {pendingDelete ? (
+        <div className="modal-overlay">
+          <div className="modal confirm-modal">
+            <h3>매출 항목 삭제</h3>
+            <p className="confirm-message">
+              "{pendingDelete.title}" 항목을 정말 삭제할까요? 삭제하면 복구할 수
+              없습니다.
+            </p>
+            <div className="sales-form-actions">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={handleDeleteCancel}
+                disabled={deletingId !== null}
+              >
+                취소
+              </button>
+              <button
+                className="button-primary"
+                type="button"
+                onClick={() => handleDeleteConfirm(pendingDelete.id)}
+                disabled={deletingId !== null}
+              >
+                {deletingId === pendingDelete.id ? "삭제 중..." : "삭제"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 };

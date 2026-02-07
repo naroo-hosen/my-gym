@@ -385,19 +385,19 @@
           });
           const data = await response.json();
 
-          if (!response.ok) {
+          if (data?.message) {
             setStatus(
-              "출석체크에 실패했습니다. 다시 시도해주세요.",
-              "error",
+              data.message,
+              data.status === "ok" ? "success" : "error",
               true,
             );
             return;
           }
 
-          if (data?.message) {
+          if (!response.ok) {
             setStatus(
-              data.message,
-              data.status === "ok" ? "success" : "error",
+              "출석체크에 실패했습니다. 다시 시도해주세요.",
+              "error",
               true,
             );
             return;

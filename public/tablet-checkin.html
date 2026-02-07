@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>출석 체크</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic",
+          system-ui, sans-serif;
+        background: #f4f6fb;
+        color: #1f2a3d;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(720px, 100%);
+        background: #fff;
+        border-radius: 32px;
+        box-shadow: 0 28px 60px rgba(20, 30, 55, 0.15);
+        padding: 32px;
+        display: grid;
+        gap: 24px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: clamp(24px, 3vw, 32px);
+      }
+      header p {
+        margin: 8px 0 0;
+        color: #5a677e;
+      }
+      .display {
+        background: #f0f3fa;
+        border-radius: 18px;
+        padding: 18px 20px;
+        font-size: clamp(20px, 2.5vw, 28px);
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 64px;
+      }
+      .display input {
+        border: none;
+        background: transparent;
+        font-size: inherit;
+        width: 100%;
+        outline: none;
+      }
+      .display button {
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+        color: #7280a0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .dial {
+        border: none;
+        background: #eef2fb;
+        border-radius: 16px;
+        padding: 18px;
+        font-size: 24px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.05s ease, background 0.2s ease;
+      }
+      .dial:active {
+        transform: scale(0.97);
+        background: #dfe7f6;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .action {
+        border: none;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .action.primary {
+        background: #2f6bff;
+        color: #fff;
+      }
+      .action.secondary {
+        background: #f0f3fa;
+        color: #4a5872;
+      }
+      .status {
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: #f8f9fd;
+        color: #4a5872;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+      }
+      .status.success {
+        background: #e8f6ee;
+        color: #1f7a46;
+      }
+      .status.error {
+        background: #ffecec;
+        color: #b42318;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <header>
+        <h1>출석 체크</h1>
+        <p>휴대폰 번호를 입력하고 출석체크 버튼을 눌러주세요.</p>
+      </header>
+
+      <div class="display">
+        <input
+          id="phoneInput"
+          type="tel"
+          inputmode="numeric"
+          placeholder="010-1234-5678"
+          aria-label="휴대폰 번호"
+        />
+        <button type="button" id="backspace" aria-label="한 글자 지우기">
+          ⌫
+        </button>
+      </div>
+
+      <section class="grid" aria-label="전화번호 다이얼">
+        <button class="dial" data-value="1">1</button>
+        <button class="dial" data-value="2">2</button>
+        <button class="dial" data-value="3">3</button>
+        <button class="dial" data-value="4">4</button>
+        <button class="dial" data-value="5">5</button>
+        <button class="dial" data-value="6">6</button>
+        <button class="dial" data-value="7">7</button>
+        <button class="dial" data-value="8">8</button>
+        <button class="dial" data-value="9">9</button>
+        <button class="dial" data-value="0">0</button>
+      </section>
+
+      <section class="actions">
+        <button class="action secondary" type="button" id="clearButton">
+          전체 지우기
+        </button>
+        <button class="action primary" type="button" id="checkInButton">
+          출석체크
+        </button>
+      </section>
+
+      <div class="status" id="statusMessage">번호를 입력해주세요.</div>
+    </main>
+
+    <script>
+      const phoneInput = document.getElementById("phoneInput");
+      const statusMessage = document.getElementById("statusMessage");
+      const dialButtons = document.querySelectorAll(".dial");
+      const backspace = document.getElementById("backspace");
+      const clearButton = document.getElementById("clearButton");
+      const checkInButton = document.getElementById("checkInButton");
+
+      const formatPhone = (value) => {
+        const digits = value.replace(/\D/g, "").slice(0, 11);
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 7)
+          return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      };
+
+      const setStatus = (message, type) => {
+        statusMessage.textContent = message;
+        statusMessage.classList.remove("success", "error");
+        if (type) {
+          statusMessage.classList.add(type);
+        }
+      };
+
+      const appendDigit = (digit) => {
+        const nextValue = formatPhone(phoneInput.value + digit);
+        phoneInput.value = nextValue;
+      };
+
+      dialButtons.forEach((button) => {
+        button.addEventListener("click", () => appendDigit(button.dataset.value));
+      });
+
+      backspace.addEventListener("click", () => {
+        const digits = phoneInput.value.replace(/\D/g, "");
+        phoneInput.value = formatPhone(digits.slice(0, -1));
+      });
+
+      clearButton.addEventListener("click", () => {
+        phoneInput.value = "";
+        setStatus("번호를 입력해주세요.");
+      });
+
+      phoneInput.addEventListener("input", () => {
+        phoneInput.value = formatPhone(phoneInput.value);
+      });
+
+      checkInButton.addEventListener("click", async () => {
+        const phone = phoneInput.value.replace(/\D/g, "");
+        if (!phone) {
+          setStatus("휴대폰 번호를 입력해주세요.", "error");
+          return;
+        }
+
+        setStatus("출석체크 중입니다...");
+        checkInButton.disabled = true;
+
+        try {
+          const response = await fetch("/api/attendance/check-in", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            setStatus("출석체크에 실패했습니다. 다시 시도해주세요.", "error");
+            return;
+          }
+
+          switch (data.status) {
+            case "ok":
+              setStatus(`${data.member?.name ?? "회원"}님 출석 완료!`, "success");
+              break;
+            case "already_checked":
+              setStatus("오늘은 이미 출석체크를 완료했습니다.", "error");
+              break;
+            case "limit":
+              setStatus("이번 주 출석 가능 횟수를 초과했습니다.", "error");
+              break;
+            case "expired":
+              setStatus("회원권이 만료되었습니다.", "error");
+              break;
+            case "not_found":
+              setStatus("등록된 회원을 찾을 수 없습니다.", "error");
+              break;
+            default:
+              setStatus("출석체크가 완료되지 않았습니다.", "error");
+          }
+        } catch (error) {
+          setStatus("네트워크 오류가 발생했습니다.", "error");
+        } finally {
+          checkInButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

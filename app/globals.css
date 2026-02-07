@@ -350,6 +350,12 @@ section {
   font-weight: 700;
 }
 
+.attendance-date-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .attendance-day {
   font-size: 12px;
   color: #6b7280;

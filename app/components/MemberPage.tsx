@@ -256,6 +256,16 @@ const getRemainingDays = (
   return Math.max(0, diffDays);
 };
 
+const formatRemainingDaysLabel = (remainingDays: number | null) => {
+  if (remainingDays === null) {
+    return "-";
+  }
+  if (remainingDays === 0) {
+    return "오늘까지";
+  }
+  return `${remainingDays}일`;
+};
+
 type EditableField =
   | "name"
   | "phone"
@@ -441,7 +451,7 @@ const MemberPage = ({
   const canCheckInMember = Boolean(
     selectedMember?.membershipId &&
       selectedMembershipRemainingDays !== null &&
-      selectedMembershipRemainingDays > 0 &&
+      selectedMembershipRemainingDays >= 0 &&
       !selectedMember.membershipPausedAt &&
       selectedMember.status !== "DELETE",
   );
@@ -1174,7 +1184,7 @@ const MemberPage = ({
                           : "-"}
                       </td>
                       <td>{expiresAtLabel}</td>
-                      <td>{remainingDays !== null ? `${remainingDays}일` : "-"}</td>
+                      <td>{formatRemainingDaysLabel(remainingDays)}</td>
                     </tr>
                   );
                 })}
@@ -1642,9 +1652,7 @@ const MemberPage = ({
               <div className="detail-item detail-item--wide">
                 <span className="detail-label">남은 기간</span>
                 <strong>
-                  {selectedMembershipRemainingDays !== null
-                    ? `${selectedMembershipRemainingDays}일`
-                    : "-"}
+                  {formatRemainingDaysLabel(selectedMembershipRemainingDays)}
                 </strong>
               </div>
               <div className="detail-item detail-item--wide">

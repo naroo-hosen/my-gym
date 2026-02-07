@@ -71,16 +71,51 @@ export const POST = async (request: Request) => {
 
   if (!member) {
     return NextResponse.json(
-      { status: "not_found" },
+      { status: "not_found", message: "회원 정보를 찾을 수 없습니다." },
       { status: 404, headers: corsHeaders },
     );
   }
 
+  const memberMembership = await prisma.memberMembership.findUnique({
+    where: { memberId: member.id },
+    include: {
+      membership: true,
+      member: {
+        select: { status: true },
+      },
+    },
+  });
+
+  if (
+    !memberMembership ||
+    memberMembership.member.status === "DELETE" ||
+    !memberMembership.membership ||
+    memberMembership.membership.status === "DELETE" ||
+    memberMembership.pausedAt
+  ) {
+    return NextResponse.json(
+      {
+        status: "no_membership",
+        message: "회원권이 없습니다.",
+        member,
+      },
+      { status: 200, headers: corsHeaders },
+    );
+  }
+
   const result = await checkInMemberById(prisma, member.id);
+  const statusMessageMap: Record<string, string> = {
+    ok: "출석체크가 완료되었습니다.",
+    already_checked: "오늘은 이미 출석체크를 완료했습니다.",
+    limit: "이번 주 출석 가능 횟수를 초과했습니다.",
+    expired: "회원권이 만료되었습니다.",
+    invalid: "출석체크가 불가능합니다.",
+  };
 
   return NextResponse.json(
     {
       status: result.status,
+      message: statusMessageMap[result.status] ?? "출석체크가 불가능합니다.",
       member,
     },
     { headers: corsHeaders },

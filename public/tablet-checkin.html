@@ -320,6 +320,11 @@
             return;
           }
 
+          if (data?.message) {
+            setStatus(data.message, data.status === "ok" ? "success" : "error");
+            return;
+          }
+
           switch (data.status) {
             case "ok":
               setStatus(`${data.member?.name ?? "회원"}님 출석 완료!`, "success");
@@ -335,6 +340,9 @@
               break;
             case "not_found":
               setStatus("등록된 회원을 찾을 수 없습니다.", "error");
+              break;
+            case "no_membership":
+              setStatus("회원권이 없습니다.", "error");
               break;
             default:
               setStatus("출석체크가 완료되지 않았습니다.", "error");

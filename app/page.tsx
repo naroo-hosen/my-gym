@@ -242,7 +242,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       membershipDuration:
         latestMembership?.membership?.duration ?? null,
       membershipDurationUnit:
-        latestMembership?.membership?.durationUnit ?? null,
+          latestMembership?.membership
+              ? ((latestMembership.membership.durationUnit === "DAY"
+                  ? "DAY"
+                  : "MONTH") as "DAY" | "MONTH")
+              : null,
       membershipWeeklyAttendance:
         latestMembership?.membership?.weeklyAttendance ?? null,
       membershipPausedAt:

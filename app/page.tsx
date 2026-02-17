@@ -267,8 +267,9 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       name: member.name,
       phone: member.phone,
       membershipDuration: activeMembership?.membership?.duration ?? null,
-      membershipDurationUnit:
-        activeMembership?.membership?.durationUnit ?? null,
+        membershipDurationUnit: activeMembership?.membership
+        ? ((activeMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH") as "DAY" | "MONTH")
+        : null,
       membershipWeeklyAttendance:
         activeMembership?.membership?.weeklyAttendance ?? null,
       membershipAssignedAt:
@@ -281,7 +282,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const serializedMemberships = memberships.map((membership) => ({
     id: membership.id,
     duration: membership.duration,
-    durationUnit: membership.durationUnit,
+      durationUnit: (membership.durationUnit === "DAY" ? "DAY" : "MONTH") as "DAY" | "MONTH",
     weeklyAttendance: membership.weeklyAttendance,
     price: membership.price,
     status: membership.status,

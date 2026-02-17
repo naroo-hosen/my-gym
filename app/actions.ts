@@ -203,9 +203,13 @@ export const updateMember = async (formData: FormData) => {
       return;
     }
     membershipDuration = membership.duration;
-    membershipDurationUnit =
+    const normalizedDurationUnit: MembershipDurationUnit =
       membership.durationUnit === "DAY" ? "DAY" : "MONTH";
-    selectedMembership = membership;
+    membershipDurationUnit = normalizedDurationUnit;
+    selectedMembership = {
+      ...membership,
+      durationUnit: normalizedDurationUnit,
+    };
   }
 
   await prisma.$transaction(async (transaction) => {
@@ -233,22 +237,36 @@ export const updateMember = async (formData: FormData) => {
             price: true,
           },
         });
+        const normalizedPreviousMembership:
+            | {
+          duration: number;
+          durationUnit: MembershipDurationUnit;
+          weeklyAttendance: number;
+          price: number;
+        }
+            | null = previousMembership
+            ? {
+              ...previousMembership,
+              durationUnit:
+                  previousMembership.durationUnit === "DAY" ? "DAY" : "MONTH",
+            }
+            : null;
         await transaction.memberMembership.deleteMany({
           where: { memberId: id },
         });
         await createMemberActivity(transaction, {
           memberId: id,
           type: "membership_revoked",
-          description: previousMembership
-            ? `회원권 회수 (${formatMembershipLabel(previousMembership)})`
+          description: normalizedPreviousMembership
+              ? `회원권 회수 (${formatMembershipLabel(normalizedPreviousMembership)})`
             : "회원권 회수",
-          metadata: previousMembership
+          metadata: normalizedPreviousMembership
             ? {
                 membershipId: existingMembership.membershipId,
-                duration: previousMembership.duration,
-                durationUnit: previousMembership.durationUnit,
-                weeklyAttendance: previousMembership.weeklyAttendance,
-                price: previousMembership.price,
+                duration: normalizedPreviousMembership.duration,
+                durationUnit: normalizedPreviousMembership.durationUnit,
+                weeklyAttendance: normalizedPreviousMembership.weeklyAttendance,
+                price: normalizedPreviousMembership.price,
               }
             : undefined,
         });

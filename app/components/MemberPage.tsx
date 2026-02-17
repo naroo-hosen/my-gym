@@ -1525,7 +1525,7 @@ const MemberPage = ({
                       }
                     >
                       <option value="none">선택 안 함</option>
-                      {isSelectedMembershipInactive && selectedMember ? (
+                      {isSelectedMembershipInactive && selectedMember?.membershipId ? (
                         <option value={selectedMember.membershipId} disabled>
                           {selectedMembershipLabel}
                         </option>

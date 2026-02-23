@@ -1108,8 +1108,8 @@ const MemberPage = ({
                   {renderSortableHeader("생년월일", "birthDate")}
                   {renderSortableHeader("나이", "age")}
                   <th>성별</th>
-                  <th>부모님 연락처</th>
                   <th>전화번호</th>
+                  <th>부모님 연락처</th>
                   {renderSortableHeader("등록일", "createdAt")}
                   <th>상태</th>
                   {renderSortableHeader("시작일", "assignedAt")}
@@ -1164,8 +1164,8 @@ const MemberPage = ({
                       </td>
                       <td>{getAge(member.birthDate) ?? "-"}</td>
                       <td>{member.gender || "-"}</td>
-                      <td>{member.parentPhone || "-"}</td>
                       <td>{member.phone}</td>
+                      <td>{member.parentPhone || "-"}</td>
                       <td>
                         {new Date(member.createdAt).toLocaleDateString("ko-KR")}
                       </td>

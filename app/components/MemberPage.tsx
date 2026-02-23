@@ -7,6 +7,7 @@ import {
   createMember,
   deleteMember,
   extendMemberMembership,
+  permanentlyDeleteMember,
   pauseMemberMembership,
   restoreMember,
   resumeMemberMembership,
@@ -299,6 +300,9 @@ const MemberPage = ({
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
+  const [pendingPermanentDeleteId, setPendingPermanentDeleteId] = useState<
+    number | null
+  >(null);
   const [pendingPauseMemberId, setPendingPauseMemberId] = useState<
     number | null
   >(null);
@@ -553,6 +557,13 @@ const MemberPage = ({
     }
 
     setPendingPauseMemberId(selectedMember.id);
+  };
+  const handlePermanentDeleteClick = () => {
+    if (!selectedMember || selectedMember.status !== "DELETE") {
+      return;
+    }
+
+    setPendingPermanentDeleteId(selectedMember.id);
   };
   const handleAttendanceCheck = () => {
     if (!selectedMember || !canCheckInMember) {
@@ -1249,6 +1260,15 @@ const MemberPage = ({
                 >
                   {selectedMember.status === "DELETE" ? "복구" : "중지"}
                 </button>
+                {selectedMember.status === "DELETE" ? (
+                  <button
+                    className="button-danger"
+                    type="button"
+                    onClick={handlePermanentDeleteClick}
+                  >
+                    영구 삭제
+                  </button>
+                ) : null}
               </div>
             </div>
             <div className="detail-grid">
@@ -1726,7 +1746,7 @@ const MemberPage = ({
         <div className="modal-overlay" role="presentation">
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
             <p className="confirm-message">
-              선택한 회원을 중지할까요? 중지 후에는 복구할 수 없습니다.
+              선택한 회원을 중지할까요? 중지 후에는 복구할 수 있습니다.
             </p>
             <div className="panel-actions center">
               <button
@@ -1853,6 +1873,42 @@ const MemberPage = ({
                 <input type="hidden" name="id" value={pendingRestoreId} />
                 <button className="button-primary" type="submit">
                   복구하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPermanentDeleteId !== null && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              회원 정보를 영구 삭제할까요? 회원권/이력까지 모두 삭제되며 복구할 수
+              없습니다.
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingPermanentDeleteId(null)}
+              >
+                취소
+              </button>
+              <form
+                action={permanentlyDeleteMember}
+                onSubmit={() => {
+                  setPendingPermanentDeleteId(null);
+                  setSelectedMemberId(null);
+                }}
+              >
+                <input
+                  type="hidden"
+                  name="id"
+                  value={pendingPermanentDeleteId}
+                />
+                <button className="button-danger" type="submit">
+                  영구 삭제
                 </button>
               </form>
             </div>

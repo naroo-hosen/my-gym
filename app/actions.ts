@@ -623,7 +623,18 @@ export const deleteMembership = async (formData: FormData) => {
   const id = Number(formData.get("id"));
 
   if (!id) {
-    return;
+    return { status: "invalid" as const };
+  }
+
+  const linkedMemberCount = await prisma.memberMembership.count({
+    where: { membershipId: id },
+  });
+
+  if (linkedMemberCount > 0) {
+    return {
+      status: "has_members" as const,
+      linkedMemberCount,
+    };
   }
 
   await prisma.membership.update({
@@ -634,6 +645,33 @@ export const deleteMembership = async (formData: FormData) => {
   });
 
   revalidatePath("/");
+  return { status: "ok" as const };
+};
+
+export const permanentlyDeleteMembership = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return { status: "invalid" as const };
+  }
+
+  const linkedMemberCount = await prisma.memberMembership.count({
+    where: { membershipId: id },
+  });
+
+  if (linkedMemberCount > 0) {
+    return {
+      status: "has_members" as const,
+      linkedMemberCount,
+    };
+  }
+
+  await prisma.membership.delete({
+    where: { id },
+  });
+
+  revalidatePath("/");
+  return { status: "ok" as const };
 };
 
 export const restoreMembership = async (formData: FormData) => {

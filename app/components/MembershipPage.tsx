@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createMembership,
   deleteMembership,
+  permanentlyDeleteMembership,
   restoreMembership,
 } from "@/app/actions";
 
@@ -45,6 +46,9 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
   );
   const [page, setPage] = useState(1);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pendingPermanentDeleteId, setPendingPermanentDeleteId] = useState<
+    number | null
+  >(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<number | null>(null);
 
   const countLabel = useMemo(
@@ -95,7 +99,22 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
   };
 
   const handleDeleteMembership = async (formData: FormData) => {
-    await deleteMembership(formData);
+    const result = await deleteMembership(formData);
+
+    if (result?.status === "has_members") {
+      alert(
+        `해당 회원권과 연결된 회원이 ${result.linkedMemberCount}명 있어 중지할 수 없습니다.`,
+      );
+      setPendingDeleteId(null);
+      return;
+    }
+
+    if (result?.status === "invalid") {
+      alert("잘못된 요청입니다.");
+      setPendingDeleteId(null);
+      return;
+    }
+
     setPendingDeleteId(null);
     startTransition(() => {
       router.refresh();
@@ -105,6 +124,30 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
   const handleRestoreMembership = async (formData: FormData) => {
     await restoreMembership(formData);
     setPendingRestoreId(null);
+    startTransition(() => {
+      router.refresh();
+    });
+  };
+
+  const handlePermanentDeleteMembership = async (formData: FormData) => {
+    const result = await permanentlyDeleteMembership(formData);
+
+    if (result?.status === "has_members") {
+      alert(
+        `해당 회원권과 연결된 회원이 ${result.linkedMemberCount}명 있어 삭제할 수 없습니다.`,
+      );
+      setPendingPermanentDeleteId(null);
+      return;
+    }
+
+    if (result?.status === "invalid") {
+      alert("잘못된 요청입니다.");
+      setPendingPermanentDeleteId(null);
+      return;
+    }
+
+    setPendingPermanentDeleteId(null);
+    setSelectedMembershipId(null);
     startTransition(() => {
       router.refresh();
     });
@@ -296,6 +339,13 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
               <h2>회원권 상세</h2>
               <div className="panel-actions">
                 <button
+                  className="button-danger"
+                  type="button"
+                  onClick={() => setPendingPermanentDeleteId(selectedMembership.id)}
+                >
+                  삭제
+                </button>
+                <button
                   className={
                     selectedMembership.status === "DELETE"
                       ? "button-primary"
@@ -405,6 +455,31 @@ const MembershipPage = ({ memberships }: MembershipPageProps) => {
                 <input type="hidden" name="id" value={pendingRestoreId} />
                 <button className="button-primary" type="submit">
                   복구하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPermanentDeleteId !== null && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              선택한 회원권을 완전히 삭제할까요? 삭제 후에는 복구할 수 없습니다.
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingPermanentDeleteId(null)}
+              >
+                취소
+              </button>
+              <form action={handlePermanentDeleteMembership}>
+                <input type="hidden" name="id" value={pendingPermanentDeleteId} />
+                <button className="button-danger" type="submit">
+                  삭제하기
                 </button>
               </form>
             </div>

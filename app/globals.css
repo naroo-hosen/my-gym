@@ -438,6 +438,7 @@ section {
 .attendance-table {
   display: flex;
   gap: 16px;
+  width: 100%;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden;
@@ -516,27 +517,30 @@ section {
 }
 
 .attendance-fixed {
-  flex: 0 0 auto;
-  min-width: 420px;
+  flex: 0 0 clamp(180px, 30vw, 320px);
+  min-width: 0;
+  max-width: 320px;
   border-right: 1px solid #e5e7eb;
   background: #ffffff;
 }
 
 .attendance-scroll {
   flex: 1;
-  max-width: none;
+  min-width: 0;
   width: 100%;
   overflow-x: auto;
   background: #ffffff;
 }
 
 .attendance-scroll-inner {
-  min-width: max-content;
+  min-width: 0;
+  width: 200%;
+  min-width: 100%;
 }
 
 .attendance-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid #e5e7eb;
   min-height: 56px;
 }
@@ -558,7 +562,7 @@ section {
 }
 
 .attendance-date-row {
-  grid-template-columns: repeat(14, minmax(96px, 1fr));
+  grid-template-columns: repeat(14, minmax(0, 1fr));
 }
 
 .attendance-week-row {
@@ -604,6 +608,7 @@ section {
 }
 
 .attendance-cell {
+  min-width: 0;
   padding: 12px 16px;
   border-right: 1px solid #e5e7eb;
   display: flex;
@@ -611,6 +616,9 @@ section {
   justify-content: center;
   gap: 4px;
   font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   min-height: 56px;
 }
 
@@ -627,11 +635,34 @@ section {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .attendance-day {
   font-size: 12px;
   color: #6b7280;
+}
+
+.attendance-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.attendance-cell.is-today {
+  background: #fef2f2;
+}
+
+.attendance-cell.is-today .attendance-date,
+.attendance-cell.is-today .attendance-day,
+.attendance-cell.is-today .attendance-count {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.attendance-cell.is-today.checked {
+  color: #991b1b;
 }
 
 .attendance-cell.checked {
@@ -1191,6 +1222,29 @@ button {
 
   .page-header {
     flex-direction: column;
+  }
+
+  .attendance-table {
+    gap: 12px;
+  }
+
+  .attendance-fixed {
+    flex-basis: 35vw;
+    min-width: 220px;
+    max-width: 240px;
+  }
+
+  .attendance-cell {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .attendance-date {
+    font-size: 12px;
+  }
+
+  .attendance-day {
+    font-size: 11px;
   }
 }
 

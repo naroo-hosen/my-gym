@@ -88,7 +88,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
     return formatDateKey(today);
   }, []);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const todayCellRef = useRef<HTMLDivElement | null>(null);
+  const thisWeekStartRef = useRef<HTMLDivElement | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const lastWeekLabel =
     lastWeekDates.length > 0
@@ -102,7 +102,29 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           thisWeekDates[thisWeekDates.length - 1],
         )}`
       : "";
-  const allDates = [...lastWeekDates, ...thisWeekDates];
+  const allDates = [...thisWeekDates, ...lastWeekDates];
+  const attendanceByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    allDates.forEach((date) => {
+      map.set(formatDateKey(date), 0);
+    });
+
+    members.forEach((member) => {
+      const memberAttendance = new Set(
+        member.activities.map((activity) => {
+          const activityDate = new Date(activity.createdAt);
+          activityDate.setHours(0, 0, 0, 0);
+          return formatDateKey(activityDate);
+        }),
+      );
+
+      memberAttendance.forEach((dateKey) => {
+        map.set(dateKey, (map.get(dateKey) ?? 0) + 1);
+      });
+    });
+
+    return map;
+  }, [allDates, members]);
   const attendanceSummary = useMemo(() => {
     const totalMembers = members.length;
     const thisWeekKeys = new Set(
@@ -183,14 +205,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
   }, [selectedMember, thisWeekDates, todayKey]);
 
   useEffect(() => {
-    if (!scrollContainerRef.current || !todayCellRef.current) {
+    if (!scrollContainerRef.current) {
       return;
     }
     const container = scrollContainerRef.current;
-    const cell = todayCellRef.current;
-    const cellCenter = cell.offsetLeft + cell.offsetWidth / 2;
-    const targetLeft = Math.max(0, cellCenter - container.clientWidth / 2);
-    container.scrollTo({ left: targetLeft, behavior: "smooth" });
+    container.scrollTo({ left: 0, behavior: "auto" });
   }, []);
 
   return (
@@ -332,21 +351,24 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         <div className="attendance-scroll" ref={scrollContainerRef}>
           <div className="attendance-scroll-inner">
             <div className="attendance-row attendance-header attendance-date-row attendance-week-row">
-              <div className="attendance-cell attendance-week-cell">
-                지난주 ({lastWeekLabel})
-              </div>
               <div className="attendance-cell attendance-week-cell is-current">
                 이번주 ({thisWeekLabel})
               </div>
+              <div className="attendance-cell attendance-week-cell">
+                지난주 ({lastWeekLabel})
+              </div>
             </div>
             <div className="attendance-row attendance-header attendance-date-row">
-              {lastWeekDates.map((date) => {
+              {thisWeekDates.map((date, index) => {
                 const dateKey = formatDateKey(date);
+                const isToday = dateKey === todayKey;
                 return (
                   <div
                     key={dateKey}
-                    className="attendance-cell"
-                    ref={dateKey === todayKey ? todayCellRef : undefined}
+                    className={`attendance-cell is-current-week${
+                      isToday ? " is-today" : ""
+                    }`}
+                    ref={index === 0 ? thisWeekStartRef : undefined}
                   >
                     <div className="attendance-date-line">
                       <span className="attendance-date">
@@ -354,18 +376,21 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                       </span>
                       <span className="attendance-day">
                         {formatDayLabel(date)}
+                      </span>
+                      <span className="attendance-count">
+                        {attendanceByDate.get(dateKey) ?? 0}명
                       </span>
                     </div>
                   </div>
                 );
               })}
-              {thisWeekDates.map((date) => {
+              {lastWeekDates.map((date) => {
                 const dateKey = formatDateKey(date);
+                const isToday = dateKey === todayKey;
                 return (
                   <div
                     key={dateKey}
-                    className="attendance-cell is-current-week"
-                    ref={dateKey === todayKey ? todayCellRef : undefined}
+                    className={`attendance-cell${isToday ? " is-today" : ""}`}
                   >
                     <div className="attendance-date-line">
                       <span className="attendance-date">
@@ -373,6 +398,9 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                       </span>
                       <span className="attendance-day">
                         {formatDayLabel(date)}
+                      </span>
+                      <span className="attendance-count">
+                        {attendanceByDate.get(dateKey) ?? 0}명
                       </span>
                     </div>
                   </div>
@@ -412,21 +440,24 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                     }
                   }}
                 >
-                  {allDates.map((date, index) => {
-                    const dateKey = formatDateKey(date);
-                    const hasAttendance = attendanceDates.has(dateKey);
-                    const isCurrentWeek = index >= lastWeekDates.length;
-                    return (
-                      <div
-                        key={dateKey}
-                        className={`attendance-cell${
-                          hasAttendance ? " checked" : ""
-                        }${isCurrentWeek ? " is-current-week" : ""}`}
-                      >
-                        {hasAttendance ? "✔︎" : "-"}
-                      </div>
-                    );
-                  })}
+                {allDates.map((date, index) => {
+                  const dateKey = formatDateKey(date);
+                  const hasAttendance = attendanceDates.has(dateKey);
+                  const isCurrentWeek = index < thisWeekDates.length;
+                  const isToday = dateKey === todayKey;
+                  return (
+                    <div
+                      key={dateKey}
+                      className={`attendance-cell${
+                        hasAttendance ? " checked" : ""
+                      }${isCurrentWeek ? " is-current-week" : ""}${
+                        isToday ? " is-today" : ""
+                      }`}
+                    >
+                      {hasAttendance ? "✔︎" : "-"}
+                    </div>
+                  );
+                })}
                 </div>
               );
             })}

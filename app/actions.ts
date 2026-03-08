@@ -504,13 +504,14 @@ export const extendMemberMembership = async (formData: FormData) => {
   const unit = formData.get("unit")?.toString();
   const amount = Number(formData.get("amount"));
   const targetDate = formData.get("targetDate")?.toString().trim();
+  const isIncrementUnit = (value: string | undefined): value is "month" | "week" | "day" =>
+    value === "month" || value === "week" || value === "day";
 
   const hasTargetDate = Boolean(targetDate);
   const hasIncrementalInput =
-    Boolean(unit) &&
+    isIncrementUnit(unit) &&
     Number.isInteger(amount) &&
-    amount > 0 &&
-    ["month", "week", "day"].includes(unit);
+    amount > 0;
 
   if (!memberId || (!hasTargetDate && !hasIncrementalInput)) {
     return;
@@ -550,6 +551,9 @@ export const extendMemberMembership = async (formData: FormData) => {
   }
 
   if (!targetDate) {
+    if (!isIncrementUnit(unit)) {
+      return;
+    }
     if (unit === "month") {
       resolvedNextExpiry.setMonth(resolvedNextExpiry.getMonth() + amount);
     } else if (unit === "week") {
@@ -581,7 +585,7 @@ export const extendMemberMembership = async (formData: FormData) => {
       ...(hasTargetDate
         ? {}
         : {
-            unit,
+            unit: unit as "month" | "week" | "day",
             amount,
           }),
     },

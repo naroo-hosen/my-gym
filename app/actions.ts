@@ -503,14 +503,16 @@ export const extendMemberMembership = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
   const unit = formData.get("unit")?.toString();
   const amount = Number(formData.get("amount"));
+  const targetDate = formData.get("targetDate")?.toString().trim();
 
-  if (
-    !memberId ||
-    !unit ||
-    !Number.isInteger(amount) ||
-    amount <= 0 ||
-    !["month", "week", "day"].includes(unit)
-  ) {
+  const hasTargetDate = Boolean(targetDate);
+  const hasIncrementalInput =
+    Boolean(unit) &&
+    Number.isInteger(amount) &&
+    amount > 0 &&
+    ["month", "week", "day"].includes(unit);
+
+  if (!memberId || (!hasTargetDate && !hasIncrementalInput)) {
     return;
   }
 
@@ -537,37 +539,51 @@ export const extendMemberMembership = async (formData: FormData) => {
         )
       : null);
 
-  if (!baseExpiry) {
+  const resolvedNextExpiry = targetDate
+    ? new Date(`${targetDate}T23:59:59`)
+    : baseExpiry
+      ? new Date(baseExpiry)
+      : null;
+
+  if (!resolvedNextExpiry || Number.isNaN(resolvedNextExpiry.getTime())) {
     return;
   }
 
-  const nextExpiry = new Date(baseExpiry);
-  if (unit === "month") {
-    nextExpiry.setMonth(nextExpiry.getMonth() + amount);
-  } else if (unit === "week") {
-    nextExpiry.setDate(nextExpiry.getDate() + amount * 7);
-  } else {
-    nextExpiry.setDate(nextExpiry.getDate() + amount);
+  if (!targetDate) {
+    if (unit === "month") {
+      resolvedNextExpiry.setMonth(resolvedNextExpiry.getMonth() + amount);
+    } else if (unit === "week") {
+      resolvedNextExpiry.setDate(resolvedNextExpiry.getDate() + amount * 7);
+    } else {
+      resolvedNextExpiry.setDate(resolvedNextExpiry.getDate() + amount);
+    }
   }
 
   await prisma.memberMembership.update({
     where: { memberId },
     data: {
-      expiresAt: nextExpiry,
+      expiresAt: resolvedNextExpiry,
     },
   });
 
   await createMemberActivity(prisma, {
     memberId,
     type: "membership_extended",
-    description: `회원권 만료일 연장 (${amount}${
-      unit === "month" ? "개월" : unit === "week" ? "주" : "일"
-    })`,
+    description: hasTargetDate
+      ? "회원권 만료일 변경"
+      : `회원권 만료일 연장 (${amount}${
+          unit === "month" ? "개월" : unit === "week" ? "주" : "일"
+        })`,
     metadata: {
-      unit,
-      amount,
-      previousExpiry: baseExpiry.toISOString(),
-      nextExpiry: nextExpiry.toISOString(),
+      mode: hasTargetDate ? "absolute" : "incremental",
+      previousExpiry: baseExpiry ? baseExpiry.toISOString() : null,
+      nextExpiry: resolvedNextExpiry.toISOString(),
+      ...(hasTargetDate
+        ? {}
+        : {
+            unit,
+            amount,
+          }),
     },
   });
 

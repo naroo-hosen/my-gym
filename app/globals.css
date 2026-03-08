@@ -253,6 +253,28 @@ p {
   margin-bottom: 16px;
 }
 
+.sales-view-filters {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.sales-view-tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sales-view-tab.active {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
 .sales-search {
   min-width: 200px;
 }

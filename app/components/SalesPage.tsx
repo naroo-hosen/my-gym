@@ -11,6 +11,8 @@ type SalesEntry = {
   description: string;
 };
 
+type SalesViewType = "all" | SalesEntry["type"];
+
 const getInputDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -53,6 +55,7 @@ const SalesPage = () => {
   const [startDate, setStartDate] = useState(defaultRange.start);
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [query, setQuery] = useState("");
+  const [viewType, setViewType] = useState<SalesViewType>("all");
 
   useEffect(() => {
     let isMounted = true;
@@ -93,13 +96,14 @@ const SalesPage = () => {
       if (!entryDate) return false;
       if (start && entryDate < start) return false;
       if (end && entryDate > end) return false;
+      if (viewType !== "all" && entry.type !== viewType) return false;
       if (!term) return true;
       return (
         entry.title.toLowerCase().includes(term) ||
         entry.description.toLowerCase().includes(term)
       );
     });
-  }, [entries, startDate, endDate, query]);
+  }, [entries, startDate, endDate, query, viewType]);
 
   const stats = useMemo(() => {
     return filteredEntries.reduce(
@@ -281,6 +285,39 @@ const SalesPage = () => {
             <span className="count">
               {isLoading ? "불러오는 중..." : `${filteredEntries.length}건`}
             </span>
+          </div>
+          <div
+            className="sales-view-filters"
+            role="tablist"
+            aria-label="매출 구분 보기"
+          >
+            <button
+              type="button"
+              className={`sales-view-tab ${
+                viewType === "all" ? "active" : "button-secondary"
+              }`}
+              onClick={() => setViewType("all")}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              className={`sales-view-tab ${
+                viewType === "income" ? "active" : "button-secondary"
+              }`}
+              onClick={() => setViewType("income")}
+            >
+              수입만
+            </button>
+            <button
+              type="button"
+              className={`sales-view-tab ${
+                viewType === "expense" ? "active" : "button-secondary"
+              }`}
+              onClick={() => setViewType("expense")}
+            >
+              지출만
+            </button>
           </div>
           <div className="sales-filters">
             <div>

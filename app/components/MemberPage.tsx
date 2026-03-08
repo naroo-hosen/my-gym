@@ -164,9 +164,16 @@ const getActivityTypeLabel = (type: string) => {
   }
 };
 
-const formatDateInput = (birthDate: string | null) => {
-  if (!birthDate) return "";
-  const date = new Date(birthDate);
+const getInputDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateInput = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().split("T")[0];
 };
@@ -278,7 +285,6 @@ type EditableField =
   | "membershipId"
   | "membershipExpiresAt";
 
-type ExpiryExtensionUnit = "month" | "week" | "day";
 const HISTORY_PAGE_SIZE = 5;
 
 const MemberPage = ({
@@ -320,9 +326,7 @@ const MemberPage = ({
   const [statusSelections, setStatusSelections] =
     useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
-  const [expiryExtensionUnit, setExpiryExtensionUnit] =
-    useState<ExpiryExtensionUnit>("month");
-  const [expiryExtensionAmount, setExpiryExtensionAmount] = useState(1);
+  const [expiryExtensionDate, setExpiryExtensionDate] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
   const [historyPage, setHistoryPage] = useState(1);
@@ -870,8 +874,12 @@ const MemberPage = ({
   const startEdit = (field: EditableField) => {
     setEditingField(field);
     if (field === "membershipExpiresAt") {
-      setExpiryExtensionUnit("month");
-      setExpiryExtensionAmount(1);
+      const resolvedDate = selectedMember?.membershipExpiresAt
+        ? formatDateInput(selectedMember.membershipExpiresAt)
+        : selectedMembershipExpiryDate
+          ? formatDateInput(selectedMembershipExpiryDate.toISOString())
+          : getInputDate(new Date());
+      setExpiryExtensionDate(resolvedDate);
     }
   };
 
@@ -1612,30 +1620,14 @@ const MemberPage = ({
                     />
                     <div className="detail-edit-row">
                       <input
-                        name="amount"
-                        type="number"
-                        min={1}
+                        name="targetDate"
+                        type="date"
                         required
-                        value={expiryExtensionAmount}
+                        value={expiryExtensionDate}
                         onChange={(event) =>
-                          setExpiryExtensionAmount(
-                            Number(event.target.value),
-                          )
+                          setExpiryExtensionDate(event.target.value)
                         }
                       />
-                      <select
-                        name="unit"
-                        value={expiryExtensionUnit}
-                        onChange={(event) =>
-                          setExpiryExtensionUnit(
-                            event.target.value as ExpiryExtensionUnit,
-                          )
-                        }
-                      >
-                        <option value="month">개월</option>
-                        <option value="week">주</option>
-                        <option value="day">일</option>
-                      </select>
                     </div>
                     <span className="detail-helper">
                       현재 만료일:{" "}
@@ -1647,7 +1639,7 @@ const MemberPage = ({
                     </span>
                     <div className="detail-edit-actions">
                       <button className="button-primary" type="submit">
-                        연장
+                        저장
                       </button>
                       <button
                         className="button-ghost"

@@ -552,6 +552,14 @@ section {
   color: #374151;
 }
 
+.attendance-stat-filter-item-inline {
+  display: grid;
+  grid-template-columns: auto 18px;
+  align-items: center;
+  justify-content: start;
+  gap: 8px;
+}
+
 .attendance-stats-table {
   border: 1px solid #e5e7eb;
   border-radius: 12px;

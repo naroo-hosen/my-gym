@@ -63,6 +63,7 @@ const getCurrentMonthRange = () => {
 const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
   const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start);
   const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end);
+  const [showOnlyNoAttendance, setShowOnlyNoAttendance] = useState(false);
 
   const periodLabel = `${startDate} ~ ${endDate}`;
 
@@ -123,15 +124,15 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
   }, [members, startDate, endDate]);
 
   const absentMembersCount = members.length - activeMembersCount;
+  const visibleMemberStats = showOnlyNoAttendance
+    ? memberStats.filter((item) => item.count === 0)
+    : memberStats;
 
   return (
     <section className="panel list-panel">
       <div className="list-panel-actions">
         <div>
           <h2 className="section-title">출석통계</h2>
-          <p className="section-subtitle">
-            기간을 지정해서 각 회원별 출석 횟수를 확인할 수 있습니다.
-          </p>
         </div>
       </div>
 
@@ -152,6 +153,14 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
             onChange={(event) => setEndDate(event.target.value)}
           />
         </label>
+        <label className="attendance-stat-filter-item attendance-stat-filter-item-inline">
+          <span>미출석 회원만 보기</span>
+          <input
+            type="checkbox"
+            checked={showOnlyNoAttendance}
+            onChange={(event) => setShowOnlyNoAttendance(event.target.checked)}
+          />
+        </label>
       </div>
 
       <div className="attendance-summary">
@@ -160,7 +169,6 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
             <span className="attendance-summary-title">조회 기간</span>
             <span className="attendance-summary-value">{periodLabel}</span>
           </div>
-          <p className="attendance-summary-meta">기간 동안의 집계</p>
         </div>
 
         <div className="attendance-summary-card">
@@ -173,9 +181,6 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
           <div className="attendance-summary-bar">
             <div className="attendance-summary-bar-fill is-accent" style={{ width: "100%" }} />
           </div>
-          <p className="attendance-summary-meta">
-            기간 내 전체 출석(회원별 횟수 합계)
-          </p>
         </div>
 
         <div className="attendance-summary-card">
@@ -195,9 +200,6 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
               }}
             />
           </div>
-          <p className="attendance-summary-meta">
-            총 회원 {formatNumber(members.length)}명 중 출석한 회원
-          </p>
         </div>
 
         <div className="attendance-summary-card">
@@ -217,9 +219,6 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
               }}
             />
           </div>
-          <p className="attendance-summary-meta">
-            조회 기간 내 1회도 출석 안 한 회원
-          </p>
         </div>
       </div>
 
@@ -227,7 +226,6 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
         <div className="panel-header">
           <div>
             <h3 className="section-title">회원별 출석 횟수</h3>
-            <p className="section-subtitle">회원별로 기간 내 출석 횟수를 집계했습니다.</p>
           </div>
         </div>
         <div className="attendance-stats-table">
@@ -237,8 +235,8 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
             <span>회원권</span>
             <span>출석 횟수</span>
           </div>
-          {memberStats.length > 0 ? (
-            memberStats.map((member) => (
+          {visibleMemberStats.length > 0 ? (
+            visibleMemberStats.map((member) => (
               <div key={member.id} className="attendance-stats-row">
                 <span>{member.name}</span>
                 <span>{member.phone || "-"}</span>

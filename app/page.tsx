@@ -4,6 +4,7 @@ import MarketingPage from "@/app/components/MarketingPage";
 import MemberPage from "@/app/components/MemberPage";
 import MembershipPage from "@/app/components/MembershipPage";
 import SalesPage from "@/app/components/SalesPage";
+import AttendanceStatsPage from "@/app/components/AttendanceStatsPage";
 import Sidebar from "@/app/components/Sidebar";
 
 type HomePageProps = {
@@ -26,6 +27,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ? "membership"
       : searchParams?.section === "attendance"
         ? "attendance"
+        : searchParams?.section === "attendance-stats"
+          ? "attendance-stats"
         : searchParams?.section === "marketing"
           ? "marketing"
           : searchParams?.section === "sales"
@@ -80,6 +83,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     : [];
 
   const isAttendanceSection = section === "attendance";
+  const isAttendanceStatsSection = section === "attendance-stats";
   const isMarketingSection = section === "marketing";
   const isSalesSection = section === "sales";
   const attendanceStart = new Date();
@@ -140,7 +144,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: "desc",
             },
           }),
-      isAttendanceSection
+      isAttendanceSection || isAttendanceStatsSection
         ? prisma.member.findMany({
             where: {
               status: "ACTIVE",
@@ -159,9 +163,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               activities: {
                 where: {
                   type: "attendance_checked",
-                  createdAt: {
-                    gte: attendanceStart,
-                  },
+                  ...(isAttendanceStatsSection ? {} : { createdAt: { gte: attendanceStart } }),
                 },
                 orderBy: {
                   createdAt: "desc",
@@ -362,6 +364,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <MembershipPage memberships={serializedMemberships} />
       ) : section === "attendance" ? (
         <AttendancePage members={serializedAttendanceMembers} />
+      ) : section === "attendance-stats" ? (
+        <AttendanceStatsPage members={serializedAttendanceMembers} />
       ) : section === "marketing" ? (
         <MarketingPage
           buckets={marketingBuckets}

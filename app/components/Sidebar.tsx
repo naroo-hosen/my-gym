@@ -7,19 +7,27 @@ const Sidebar = () => {
   const [isMembersOpen, setIsMembersOpen] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const section =
-    searchParams.get("section") === "membership"
-      ? "membership"
-      : searchParams.get("section") === "attendance"
-        ? "attendance"
-        : searchParams.get("section") === "marketing"
-          ? "marketing"
-          : searchParams.get("section") === "sales"
-            ? "sales"
+const section =
+  searchParams.get("section") === "membership"
+    ? "membership"
+    : searchParams.get("section") === "attendance"
+      ? "attendance"
+      : searchParams.get("section") === "attendance-stats"
+        ? "attendance-stats"
+      : searchParams.get("section") === "marketing"
+        ? "marketing"
+        : searchParams.get("section") === "sales"
+          ? "sales"
         : "member";
 
   const handleNavigate = (
-    nextSection: "member" | "membership" | "attendance" | "marketing" | "sales",
+    nextSection:
+      | "member"
+      | "membership"
+      | "attendance"
+      | "attendance-stats"
+      | "marketing"
+      | "sales",
   ) => {
     const params = new URLSearchParams(searchParams.toString());
 
@@ -29,6 +37,10 @@ const Sidebar = () => {
       params.delete("field");
     } else if (nextSection === "attendance") {
       params.set("section", "attendance");
+      params.delete("q");
+      params.delete("field");
+    } else if (nextSection === "attendance-stats") {
+      params.set("section", "attendance-stats");
       params.delete("q");
       params.delete("field");
     } else if (nextSection === "marketing") {
@@ -98,6 +110,15 @@ const Sidebar = () => {
                 onClick={() => handleNavigate("attendance")}
               >
                 출석현황
+              </button>
+              <button
+                className={`menu-item sub${
+                  section === "attendance-stats" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("attendance-stats")}
+              >
+                출석통계
               </button>
             </div>
           )}

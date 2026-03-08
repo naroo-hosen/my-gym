@@ -21,29 +21,22 @@ type AttendancePageProps = {
   members: AttendanceMember[];
 };
 
-const buildWeekRanges = (baseDate = new Date()) => {
+const buildWeekDates = (baseDate = new Date(), weekOffset = 0) => {
   const today = new Date(baseDate);
   today.setHours(0, 0, 0, 0);
   const day = today.getDay();
   const diffToMonday = (day + 6) % 7;
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - diffToMonday);
-  const lastWeekStart = new Date(thisWeekStart);
-  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
-  const lastWeekDates: Date[] = [];
-  const thisWeekDates: Date[] = [];
+  const currentWeekStart = new Date(today);
+  currentWeekStart.setDate(today.getDate() - diffToMonday + weekOffset * 7);
+  const weekDates: Date[] = [];
 
   for (let i = 0; i < 7; i += 1) {
-    const last = new Date(lastWeekStart);
-    last.setDate(lastWeekStart.getDate() + i);
-    lastWeekDates.push(last);
-
-    const current = new Date(thisWeekStart);
-    current.setDate(thisWeekStart.getDate() + i);
-    thisWeekDates.push(current);
+    const current = new Date(currentWeekStart);
+    current.setDate(currentWeekStart.getDate() + i);
+    weekDates.push(current);
   }
 
-  return { lastWeekDates, thisWeekDates };
+  return weekDates;
 };
 
 const formatDateKey = (date: Date) =>
@@ -81,7 +74,11 @@ const formatDateValue = (value: string | null) => {
 };
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
-  const { lastWeekDates, thisWeekDates } = buildWeekRanges();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const visibleDates = useMemo(
+    () => buildWeekDates(new Date(), weekOffset),
+    [weekOffset],
+  );
   const todayKey = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -90,19 +87,15 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const thisWeekStartRef = useRef<HTMLDivElement | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-  const lastWeekLabel =
-    lastWeekDates.length > 0
-      ? `${formatDateLabel(lastWeekDates[0])} ~ ${formatDateLabel(
-          lastWeekDates[lastWeekDates.length - 1],
+  const visibleLabel =
+    visibleDates.length > 0
+      ? `${formatDateLabel(visibleDates[0])} ~ ${formatDateLabel(
+          visibleDates[visibleDates.length - 1],
         )}`
       : "";
-  const thisWeekLabel =
-    thisWeekDates.length > 0
-      ? `${formatDateLabel(thisWeekDates[0])} ~ ${formatDateLabel(
-          thisWeekDates[thisWeekDates.length - 1],
-        )}`
-      : "";
-  const allDates = [...thisWeekDates, ...lastWeekDates];
+  const periodLabel =
+    weekOffset === 0 ? "이번주" : `${Math.abs(weekOffset)}주 전`;
+  const allDates = visibleDates;
   const attendanceByDate = useMemo(() => {
     const map = new Map<string, number>();
     allDates.forEach((date) => {
@@ -127,11 +120,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
   }, [allDates, members]);
   const attendanceSummary = useMemo(() => {
     const totalMembers = members.length;
-    const thisWeekKeys = new Set(
-      thisWeekDates.map((date) => formatDateKey(date)),
+    const selectedWeekKeys = new Set(
+      visibleDates.map((date) => formatDateKey(date)),
     );
     let todayCount = 0;
-    let thisWeekCount = 0;
+    let selectedWeekCount = 0;
 
     members.forEach((member) => {
       const attendanceDates = new Set(
@@ -146,19 +139,19 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         todayCount += 1;
       }
 
-      const hasThisWeekAttendance = Array.from(thisWeekKeys).some((key) =>
+      const hasSelectedWeekAttendance = Array.from(selectedWeekKeys).some((key) =>
         attendanceDates.has(key),
       );
-      if (hasThisWeekAttendance) {
-        thisWeekCount += 1;
+      if (hasSelectedWeekAttendance) {
+        selectedWeekCount += 1;
       }
     });
 
     const todayRate = totalMembers
       ? Math.round((todayCount / totalMembers) * 100)
       : 0;
-    const thisWeekRate = totalMembers
-      ? Math.round((thisWeekCount / totalMembers) * 100)
+    const selectedWeekRate = totalMembers
+      ? Math.round((selectedWeekCount / totalMembers) * 100)
       : 0;
     const absentCount = totalMembers - todayCount;
 
@@ -166,11 +159,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       totalMembers,
       todayCount,
       todayRate,
-      thisWeekCount,
-      thisWeekRate,
+      selectedWeekCount,
+      selectedWeekRate,
       absentCount,
     };
-  }, [members, thisWeekDates, todayKey]);
+  }, [members, visibleDates, todayKey]);
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedMemberId) ?? null,
     [members, selectedMemberId],
@@ -183,7 +176,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       return formatDateKey(activityDate);
     });
     const attendanceSet = new Set(attendanceDates);
-    const thisWeekAttendanceCount = thisWeekDates.reduce((count, date) => {
+    const selectedWeekAttendanceCount = visibleDates.reduce((count, date) => {
       const key = formatDateKey(date);
       return attendanceSet.has(key) ? count + 1 : count;
     }, 0);
@@ -199,10 +192,10 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
 
     return {
       todayAttendance: attendanceSet.has(todayKey),
-      thisWeekAttendanceCount,
+      selectedWeekAttendanceCount,
       latestAttendance,
     };
-  }, [selectedMember, thisWeekDates, todayKey]);
+  }, [selectedMember, visibleDates, todayKey]);
 
   useEffect(() => {
     if (!scrollContainerRef.current) {
@@ -210,7 +203,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
     }
     const container = scrollContainerRef.current;
     container.scrollTo({ left: 0, behavior: "auto" });
-  }, []);
+  }, [weekOffset]);
 
   return (
     <section className="panel list-panel">
@@ -251,8 +244,8 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           </div>
           <div className="attendance-summary-bar">
             <div
-              className="attendance-summary-bar-fill is-accent"
-              style={{ width: `${attendanceSummary.todayRate}%` }}
+                className="attendance-summary-bar-fill is-accent"
+                style={{ width: `${attendanceSummary.todayRate}%` }}
             />
           </div>
           <p className="attendance-summary-meta">
@@ -264,17 +257,18 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           <div className="attendance-summary-header">
             <span className="attendance-summary-title">주간 출석률</span>
             <span className="attendance-summary-value">
-              {attendanceSummary.thisWeekRate}%
+              {attendanceSummary.selectedWeekRate}%
             </span>
           </div>
           <div className="attendance-summary-bar">
             <div
               className="attendance-summary-bar-fill is-weekly"
-              style={{ width: `${attendanceSummary.thisWeekRate}%` }}
+              style={{ width: `${attendanceSummary.selectedWeekRate}%` }}
             />
           </div>
           <p className="attendance-summary-meta">
-            이번주 출석자 {attendanceSummary.thisWeekCount} /{" "}
+            {periodLabel} 출석자{" "}
+            {attendanceSummary.selectedWeekCount} /{" "}
             {attendanceSummary.totalMembers}
           </p>
         </div>
@@ -294,6 +288,29 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           <p className="attendance-summary-meta">
             오늘 미출석 {attendanceSummary.absentCount}명
           </p>
+        </div>
+      </div>
+
+      <div className="attendance-week-controls">
+        <div className="actions">
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setWeekOffset((prev) => prev - 1)}
+          >
+            지난주 보기
+          </button>
+          {weekOffset !== 0 ? (
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() =>
+                setWeekOffset((prev) => (prev + 1 > 0 ? 0 : prev + 1))
+              }
+            >
+              다음주 보기
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -352,14 +369,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
           <div className="attendance-scroll-inner">
             <div className="attendance-row attendance-header attendance-date-row attendance-week-row">
               <div className="attendance-cell attendance-week-cell is-current">
-                이번주 ({thisWeekLabel})
-              </div>
-              <div className="attendance-cell attendance-week-cell">
-                지난주 ({lastWeekLabel})
+                {periodLabel} ({visibleLabel})
               </div>
             </div>
             <div className="attendance-row attendance-header attendance-date-row">
-              {thisWeekDates.map((date, index) => {
+              {allDates.map((date, index) => {
                 const dateKey = formatDateKey(date);
                 const isToday = dateKey === todayKey;
                 return (
@@ -369,28 +383,6 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                       isToday ? " is-today" : ""
                     }`}
                     ref={index === 0 ? thisWeekStartRef : undefined}
-                  >
-                    <div className="attendance-date-line">
-                      <span className="attendance-date">
-                        {formatDateLabel(date)}
-                      </span>
-                      <span className="attendance-day">
-                        {formatDayLabel(date)}
-                      </span>
-                      <span className="attendance-count">
-                        {attendanceByDate.get(dateKey) ?? 0}명
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              {lastWeekDates.map((date) => {
-                const dateKey = formatDateKey(date);
-                const isToday = dateKey === todayKey;
-                return (
-                  <div
-                    key={dateKey}
-                    className={`attendance-cell${isToday ? " is-today" : ""}`}
                   >
                     <div className="attendance-date-line">
                       <span className="attendance-date">
@@ -443,16 +435,13 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 {allDates.map((date, index) => {
                   const dateKey = formatDateKey(date);
                   const hasAttendance = attendanceDates.has(dateKey);
-                  const isCurrentWeek = index < thisWeekDates.length;
                   const isToday = dateKey === todayKey;
                   return (
                     <div
                       key={dateKey}
                       className={`attendance-cell${
                         hasAttendance ? " checked" : ""
-                      }${isCurrentWeek ? " is-current-week" : ""}${
-                        isToday ? " is-today" : ""
-                      }`}
+                      } is-current-week${isToday ? " is-today" : ""}`}
                     >
                       {hasAttendance ? "✔︎" : "-"}
                     </div>
@@ -506,9 +495,11 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 </strong>
               </div>
               <div className="detail-item">
-                <span className="detail-label">이번주 출석 횟수</span>
+                <span className="detail-label">
+                  {periodLabel} 출석 횟수
+                </span>
                 <strong>
-                  {selectedMemberAttendance?.thisWeekAttendanceCount ?? 0}회
+                  {selectedMemberAttendance?.selectedWeekAttendanceCount ?? 0}회
                 </strong>
               </div>
               <div className="detail-item">

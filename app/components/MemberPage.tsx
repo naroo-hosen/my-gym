@@ -59,7 +59,7 @@ type MemberPageProps = {
   members: Member[];
   memberships: Membership[];
   searchTerm: string;
-  searchField: "name" | "phone";
+  searchField: "name" | "phone" | "memo";
   membershipFilter: MembershipFilter;
   statusFilters: StatusFilter[];
   section: "member" | "membership";
@@ -769,7 +769,7 @@ const MemberPage = ({
 
   const buildQueryParams = (
     term: string,
-    field: "name" | "phone",
+    field: "name" | "phone" | "memo",
     membership: MembershipFilterOption[],
     statuses: StatusFilter[],
   ) => {
@@ -799,7 +799,7 @@ const MemberPage = ({
 
   const pushQuery = (
     term: string,
-    field: "name" | "phone",
+    field: "name" | "phone" | "memo",
     membership: MembershipFilterOption[],
     statuses: StatusFilter[],
   ) => {
@@ -1071,13 +1071,18 @@ const MemberPage = ({
                 value={draftSearchField}
                 onChange={(event) =>
                   setDraftSearchField(
-                    event.target.value === "phone" ? "phone" : "name",
+                    event.target.value === "phone"
+                      ? "phone"
+                      : event.target.value === "memo"
+                        ? "memo"
+                        : "name",
                   )
                 }
                 aria-label="검색 기준"
               >
                 <option value="name">이름</option>
                 <option value="phone">전화번호</option>
+                <option value="memo">메모</option>
               </select>
               <div className="search-bar">
                 <input

@@ -21,7 +21,12 @@ type HomePageProps = {
 const HomePage = async ({ searchParams }: HomePageProps) => {
   const searchTerm =
     typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
-  const searchField = searchParams?.field === "phone" ? "phone" : "name";
+  const searchField =
+    searchParams?.field === "phone"
+      ? "phone"
+      : searchParams?.field === "memo"
+        ? "memo"
+        : "name";
   const section =
     searchParams?.section === "membership"
       ? "membership"

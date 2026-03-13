@@ -9,6 +9,7 @@ type AttendanceActivity = {
 type AttendanceMember = {
   id: number;
   name: string;
+  birthDate: string | null;
   phone: string;
   membershipDuration: number | null;
   membershipDurationUnit: "MONTH" | "DAY" | null;
@@ -24,6 +25,7 @@ type AttendanceStatsPageProps = {
 type MemberAttendanceStat = {
   id: number;
   name: string;
+  birthDate: string | null;
   phone: string;
   membership: string;
   count: number;
@@ -31,6 +33,15 @@ type MemberAttendanceStat = {
 
 const formatNumber = (value: number) =>
   Intl.NumberFormat("ko-KR").format(value);
+
+const formatBirthDate = (birthDate: string | null) => {
+  if (!birthDate) return "";
+
+  const date = new Date(birthDate);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString("ko-KR").replace(/\.\s/g, ".").replace(/\.$/, "");
+};
 
 const formatMembership = (
   duration: number | null,
@@ -96,6 +107,7 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
       return {
         id: member.id,
         name: member.name,
+        birthDate: member.birthDate,
         phone: member.phone,
         membership: formatMembership(
           member.membershipDuration,
@@ -238,7 +250,10 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
           {visibleMemberStats.length > 0 ? (
             visibleMemberStats.map((member) => (
               <div key={member.id} className="attendance-stats-row">
-                <span>{member.name}</span>
+                <span>
+                  {member.name}
+                  {member.birthDate ? ` (${formatBirthDate(member.birthDate)})` : ""}
+                </span>
                 <span>{member.phone || "-"}</span>
                 <span>{member.membership}</span>
                 <span>{member.count}회</span>

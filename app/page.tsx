@@ -271,6 +271,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     return {
       id: member.id,
       name: member.name,
+      birthDate: member.birthDate ? member.birthDate.toISOString() : null,
       phone: member.phone,
       membershipDuration: activeMembership?.membership?.duration ?? null,
         membershipDurationUnit: activeMembership?.membership

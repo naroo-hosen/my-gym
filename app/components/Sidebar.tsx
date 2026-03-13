@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const Sidebar = () => {
   const [isMembersOpen, setIsMembersOpen] = useState(true);
+  const [isEquipmentOpen, setIsEquipmentOpen] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
 const section =
@@ -14,6 +15,10 @@ const section =
       ? "attendance"
       : searchParams.get("section") === "attendance-stats"
         ? "attendance-stats"
+      : searchParams.get("section") === "equipment"
+        ? "equipment"
+        : searchParams.get("section") === "locker"
+          ? "locker"
       : searchParams.get("section") === "marketing"
         ? "marketing"
         : searchParams.get("section") === "sales"
@@ -26,6 +31,8 @@ const section =
       | "membership"
       | "attendance"
       | "attendance-stats"
+      | "equipment"
+      | "locker"
       | "marketing"
       | "sales",
   ) => {
@@ -41,6 +48,14 @@ const section =
       params.delete("field");
     } else if (nextSection === "attendance-stats") {
       params.set("section", "attendance-stats");
+      params.delete("q");
+      params.delete("field");
+    } else if (nextSection === "equipment") {
+      params.set("section", "equipment");
+      params.delete("q");
+      params.delete("field");
+    } else if (nextSection === "locker") {
+      params.set("section", "locker");
       params.delete("q");
       params.delete("field");
     } else if (nextSection === "marketing") {
@@ -119,6 +134,42 @@ const section =
                 onClick={() => handleNavigate("attendance-stats")}
               >
                 출석통계
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="menu-group">
+          <button
+            className="menu-item menu-toggle"
+            type="button"
+            onClick={() => setIsEquipmentOpen((prev) => !prev)}
+            aria-expanded={isEquipmentOpen}
+            aria-controls="equipment-submenu"
+          >
+            <span>장비관리</span>
+            <span className="menu-toggle-icon">
+              {isEquipmentOpen ? "▾" : "▸"}
+            </span>
+          </button>
+          {isEquipmentOpen && (
+            <div id="equipment-submenu" className="menu-sub">
+              <button
+                className={`menu-item sub${
+                  section === "equipment" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("equipment")}
+              >
+                장비 관리
+              </button>
+              <button
+                className={`menu-item sub${
+                  section === "locker" ? " active" : ""
+                }`}
+                type="button"
+                onClick={() => handleNavigate("locker")}
+              >
+                보관함 관리
               </button>
             </div>
           )}

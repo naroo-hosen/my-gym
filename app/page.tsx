@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import AttendancePage from "@/app/components/AttendancePage";
+import EquipmentPage from "@/app/components/EquipmentPage";
+import LockerPage from "@/app/components/LockerPage";
 import MarketingPage from "@/app/components/MarketingPage";
 import MemberPage from "@/app/components/MemberPage";
 import MembershipPage from "@/app/components/MembershipPage";
@@ -34,6 +36,10 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         ? "attendance"
         : searchParams?.section === "attendance-stats"
           ? "attendance-stats"
+          : searchParams?.section === "equipment"
+            ? "equipment"
+            : searchParams?.section === "locker"
+              ? "locker"
         : searchParams?.section === "marketing"
           ? "marketing"
           : searchParams?.section === "sales"
@@ -89,6 +95,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
 
   const isAttendanceSection = section === "attendance";
   const isAttendanceStatsSection = section === "attendance-stats";
+  const isEquipmentSection = section === "equipment";
+  const isLockerSection = section === "locker";
   const isMarketingSection = section === "marketing";
   const isSalesSection = section === "sales";
   const attendanceStart = new Date();
@@ -108,7 +116,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     totalMembersWithMembership,
   ] =
     await Promise.all([
-      isMarketingSection || isSalesSection
+      isMarketingSection || isSalesSection || isEquipmentSection || isLockerSection
         ? Promise.resolve([])
         : prisma.member.findMany({
             where: {
@@ -142,7 +150,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: "desc",
             },
           }),
-      isMarketingSection || isSalesSection
+      isMarketingSection || isSalesSection || isEquipmentSection || isLockerSection
         ? Promise.resolve([])
         : prisma.membership.findMany({
             orderBy: {
@@ -372,6 +380,10 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <AttendancePage members={serializedAttendanceMembers} />
       ) : section === "attendance-stats" ? (
         <AttendanceStatsPage members={serializedAttendanceMembers} />
+      ) : section === "equipment" ? (
+        <EquipmentPage />
+      ) : section === "locker" ? (
+        <LockerPage />
       ) : section === "marketing" ? (
         <MarketingPage
           buckets={marketingBuckets}

@@ -86,6 +86,7 @@ model EquipmentSale {
   memberId    Int
   equipmentId Int
   price       Int
+  paymentMethod String
   soldAt      DateTime  @default(now())
   member      Member    @relation(fields: [memberId], references: [id])
   equipment   Equipment @relation(fields: [equipmentId], references: [id])

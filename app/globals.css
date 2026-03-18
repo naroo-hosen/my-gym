@@ -244,6 +244,7 @@ p {
 .sales-form-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .sales-filters {
@@ -377,7 +378,7 @@ p {
 
 .equipment-sale-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
   gap: 12px;
   align-items: end;
 }

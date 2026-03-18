@@ -793,8 +793,9 @@ export const restoreEquipment = async (formData: FormData) => {
 export const createEquipmentSale = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
   const equipmentId = Number(formData.get("equipmentId"));
+  const paymentMethod = formData.get("paymentMethod")?.toString().trim();
 
-  if (!memberId || !equipmentId) {
+  if (!memberId || !equipmentId || !paymentMethod) {
     return { status: "invalid" as const };
   }
 
@@ -832,6 +833,7 @@ export const createEquipmentSale = async (formData: FormData) => {
         memberId,
         equipmentId,
         price: equipment.price,
+        paymentMethod,
       },
     });
 
@@ -840,8 +842,8 @@ export const createEquipmentSale = async (formData: FormData) => {
         type: "income",
         date: new Date(),
         amount: equipment.price,
-        title: `장비 판매 - ${equipment.name}`,
-        description: `${member.name} ${equipment.name} 판매`,
+        title: `${member.name} ${equipment.name} 판매`,
+        description: paymentMethod,
       },
     });
 
@@ -854,6 +856,7 @@ export const createEquipmentSale = async (formData: FormData) => {
         equipmentId: equipment.id,
         equipmentName: equipment.name,
         price: equipment.price,
+        paymentMethod,
       },
     });
   });
@@ -901,8 +904,8 @@ export const deleteEquipmentSale = async (formData: FormData) => {
         type: "expense",
         date: new Date(),
         amount: sale.price,
-        title: `장비 판매 취소 - ${sale.equipment.name}`,
-        description: `${sale.member.name} ${sale.equipment.name} 판매 취소`,
+        title: `${sale.member.name} ${sale.equipment.name} 판매 취소`,
+        description: sale.paymentMethod,
       },
     });
 
@@ -915,6 +918,7 @@ export const deleteEquipmentSale = async (formData: FormData) => {
         equipmentId: sale.equipment.id,
         equipmentName: sale.equipment.name,
         price: sale.price,
+        paymentMethod: sale.paymentMethod,
       },
     });
   });

@@ -71,6 +71,7 @@ type EquipmentSale = {
   equipmentId: number;
   equipmentName: string;
   price: number;
+  paymentMethod: string;
   soldAt: string;
 };
 
@@ -362,6 +363,7 @@ const MemberPage = ({
     direction: "asc" | "desc";
   }>({ key: null, direction: "asc" });
   const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
+  const [equipmentPaymentMethod, setEquipmentPaymentMethod] = useState("");
   const [pendingDeleteEquipmentSaleId, setPendingDeleteEquipmentSaleId] =
     useState<number | null>(null);
   const membershipOptions = useMemo(
@@ -713,6 +715,7 @@ const MemberPage = ({
       setIsHistoryOpen(false);
     }
     setSelectedEquipmentId("");
+    setEquipmentPaymentMethod("");
     setHistoryTypeFilter("all");
     setHistoryPage(1);
   }, [selectedMemberId]);
@@ -932,11 +935,12 @@ const MemberPage = ({
     const result = await createEquipmentSale(formData);
 
     if (result?.status === "invalid") {
-      alert("판매할 장비를 선택해 주세요.");
+      alert("판매할 장비와 결제방법을 입력해 주세요.");
       return;
     }
 
     setSelectedEquipmentId("");
+    setEquipmentPaymentMethod("");
     startTransition(() => {
       router.refresh();
     });
@@ -1836,6 +1840,21 @@ const MemberPage = ({
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label htmlFor="member-equipment-payment">
+                      결제방법
+                    </label>
+                    <input
+                      id="member-equipment-payment"
+                      name="paymentMethod"
+                      value={equipmentPaymentMethod}
+                      onChange={(event) =>
+                        setEquipmentPaymentMethod(event.target.value)
+                      }
+                      placeholder="예: 카드, 현금, 계좌이체"
+                      required
+                    />
+                  </div>
                   <button className="button-primary" type="submit">
                     판매 등록
                   </button>
@@ -1851,6 +1870,7 @@ const MemberPage = ({
                         <th>판매일</th>
                         <th>장비명</th>
                         <th>판매가</th>
+                        <th>결제방법</th>
                         <th>관리</th>
                       </tr>
                     </thead>
@@ -1862,6 +1882,7 @@ const MemberPage = ({
                           </td>
                           <td>{sale.equipmentName}</td>
                           <td>{formatPrice(sale.price)}</td>
+                          <td>{sale.paymentMethod}</td>
                           <td>
                             <button
                               className="button-danger button-small"

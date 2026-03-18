@@ -45,6 +45,7 @@ const SalesPage = () => {
   const [entries, setEntries] = useState<SalesEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SalesEntry | null>(null);
   const [type, setType] = useState<SalesEntry["type"]>("income");
@@ -56,6 +57,15 @@ const SalesPage = () => {
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [query, setQuery] = useState("");
   const [viewType, setViewType] = useState<SalesViewType>("all");
+
+  const resetForm = () => {
+    setEditingId(null);
+    setType("income");
+    setDate(getInputDate(new Date()));
+    setAmount("");
+    setTitle("");
+    setDescription("");
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -132,11 +142,12 @@ const SalesPage = () => {
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/sales", {
-        method: "POST",
+        method: editingId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...(editingId ? { id: editingId } : {}),
           type,
           date,
           amount: Math.abs(numericAmount),
@@ -149,16 +160,29 @@ const SalesPage = () => {
         throw new Error("Failed to save sales entry");
       }
 
-      const created = (await response.json()) as SalesEntry;
-      setEntries((prev) => [created, ...prev]);
-      setAmount("");
-      setTitle("");
-      setDescription("");
+      const saved = (await response.json()) as SalesEntry;
+      if (editingId) {
+        setEntries((prev) =>
+          prev.map((entry) => (entry.id === saved.id ? saved : entry)),
+        );
+      } else {
+        setEntries((prev) => [saved, ...prev]);
+      }
+      resetForm();
     } catch (error) {
       console.error(error);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditClick = (entry: SalesEntry) => {
+    setEditingId(entry.id);
+    setType(entry.type);
+    setDate(entry.date);
+    setAmount(String(entry.amount));
+    setTitle(entry.title);
+    setDescription(entry.description);
   };
 
   const handleDeleteConfirm = async (entryId: number) => {
@@ -268,12 +292,26 @@ const SalesPage = () => {
               />
             </div>
             <div className="sales-form-actions">
+              {editingId ? (
+                <button
+                  className="button-secondary"
+                  type="button"
+                  onClick={resetForm}
+                  disabled={isSubmitting}
+                >
+                  수정 취소
+                </button>
+              ) : null}
               <button
                 className="button-primary"
                 type="submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "저장 중..." : "항목 추가"}
+                {isSubmitting
+                  ? "저장 중..."
+                  : editingId
+                    ? "항목 수정"
+                    : "항목 추가"}
               </button>
             </div>
           </form>
@@ -402,6 +440,14 @@ const SalesPage = () => {
                         {entry.description || "-"}
                       </td>
                       <td>
+                        <button
+                          className="button-secondary"
+                          type="button"
+                          onClick={() => handleEditClick(entry)}
+                          disabled={deletingId === entry.id}
+                        >
+                          수정
+                        </button>
                         <button
                           className="button-secondary"
                           type="button"

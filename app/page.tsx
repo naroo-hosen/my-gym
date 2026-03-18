@@ -295,6 +295,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         equipmentId: sale.equipmentId,
         equipmentName: sale.equipment.name,
         price: sale.price,
+        paymentMethod: sale.paymentMethod,
         soldAt: sale.soldAt.toISOString(),
       })),
       activities: member.activities.map((activity) => ({

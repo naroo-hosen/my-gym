@@ -340,6 +340,28 @@ p {
   text-overflow: ellipsis;
 }
 
+.equipment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.equipment-form {
+  display: grid;
+  gap: 16px;
+}
+
+.equipment-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.equipment-form-meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;

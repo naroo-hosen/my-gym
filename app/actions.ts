@@ -710,3 +710,79 @@ export const restoreMembership = async (formData: FormData) => {
 
   revalidatePath("/");
 };
+
+export const createEquipment = async (formData: FormData) => {
+  const name = formData.get("name")?.toString().trim();
+  const price = Number(formData.get("price"));
+
+  if (!name || Number.isNaN(price) || price < 0) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.equipment.create({
+    data: {
+      name,
+      price,
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};
+
+export const updateEquipment = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+  const name = formData.get("name")?.toString().trim();
+  const price = Number(formData.get("price"));
+
+  if (!id || !name || Number.isNaN(price) || price < 0) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.equipment.update({
+    where: { id },
+    data: {
+      name,
+      price,
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};
+
+export const deleteEquipment = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.equipment.update({
+    where: { id },
+    data: {
+      status: "DELETE",
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};
+
+export const restoreEquipment = async (formData: FormData) => {
+  const id = Number(formData.get("id"));
+
+  if (!id) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.equipment.update({
+    where: { id },
+    data: {
+      status: "ACTIVE",
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};

@@ -383,6 +383,9 @@ export const permanentlyDeleteMember = async (formData: FormData) => {
     await transaction.memberActivity.deleteMany({
       where: { memberId: id },
     });
+    await transaction.equipmentSale.deleteMany({
+      where: { memberId: id },
+    });
     await transaction.memberMembership.deleteMany({
       where: { memberId: id },
     });
@@ -781,6 +784,139 @@ export const restoreEquipment = async (formData: FormData) => {
     data: {
       status: "ACTIVE",
     },
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};
+
+export const createEquipmentSale = async (formData: FormData) => {
+  const memberId = Number(formData.get("memberId"));
+  const equipmentId = Number(formData.get("equipmentId"));
+
+  if (!memberId || !equipmentId) {
+    return { status: "invalid" as const };
+  }
+
+  const [member, equipment] = await Promise.all([
+    prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+      },
+    }),
+    prisma.equipment.findFirst({
+      where: {
+        id: equipmentId,
+        status: {
+          not: "DELETE",
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+      },
+    }),
+  ]);
+
+  if (!member || member.status === "DELETE" || !equipment) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.$transaction(async (transaction) => {
+    const sale = await transaction.equipmentSale.create({
+      data: {
+        memberId,
+        equipmentId,
+        price: equipment.price,
+      },
+    });
+
+    await transaction.salesEntry.create({
+      data: {
+        type: "income",
+        date: new Date(),
+        amount: equipment.price,
+        title: `장비 판매 - ${equipment.name}`,
+        description: `${member.name} ${equipment.name} 판매`,
+      },
+    });
+
+    await createMemberActivity(transaction, {
+      memberId,
+      type: "equipment_sold",
+      description: `장비 판매 (${equipment.name})`,
+      metadata: {
+        equipmentSaleId: sale.id,
+        equipmentId: equipment.id,
+        equipmentName: equipment.name,
+        price: equipment.price,
+      },
+    });
+  });
+
+  revalidatePath("/");
+  return { status: "success" as const };
+};
+
+export const deleteEquipmentSale = async (formData: FormData) => {
+  const equipmentSaleId = Number(formData.get("equipmentSaleId"));
+
+  if (!equipmentSaleId) {
+    return { status: "invalid" as const };
+  }
+
+  const sale = await prisma.equipmentSale.findUnique({
+    where: { id: equipmentSaleId },
+    include: {
+      member: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      equipment: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!sale) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.$transaction(async (transaction) => {
+    await transaction.equipmentSale.delete({
+      where: { id: equipmentSaleId },
+    });
+
+    await transaction.salesEntry.create({
+      data: {
+        type: "expense",
+        date: new Date(),
+        amount: sale.price,
+        title: `장비 판매 취소 - ${sale.equipment.name}`,
+        description: `${sale.member.name} ${sale.equipment.name} 판매 취소`,
+      },
+    });
+
+    await createMemberActivity(transaction, {
+      memberId: sale.member.id,
+      type: "equipment_sale_deleted",
+      description: `장비 판매 취소 (${sale.equipment.name})`,
+      metadata: {
+        equipmentSaleId,
+        equipmentId: sale.equipment.id,
+        equipmentName: sale.equipment.name,
+        price: sale.price,
+      },
+    });
   });
 
   revalidatePath("/");

@@ -141,6 +141,14 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
                   membership: true,
                 },
               },
+              equipmentSales: {
+                include: {
+                  equipment: true,
+                },
+                orderBy: {
+                  soldAt: "desc",
+                },
+              },
               activities: {
                 orderBy: {
                   createdAt: "desc",
@@ -158,7 +166,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: "desc",
             },
           }),
-      isEquipmentSection
+      isEquipmentSection || section === "member"
         ? prisma.equipment.findMany({
             where: {
               status: {
@@ -282,6 +290,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       membershipPauseEndsAt:
         latestMembership?.pauseEndsAt?.toISOString() ?? null,
       membershipTotalPausedMs: latestMembership?.totalPausedMs ?? 0,
+      equipmentSales: member.equipmentSales.map((sale) => ({
+        id: sale.id,
+        equipmentId: sale.equipmentId,
+        equipmentName: sale.equipment.name,
+        price: sale.price,
+        soldAt: sale.soldAt.toISOString(),
+      })),
       activities: member.activities.map((activity) => ({
         id: activity.id,
         type: activity.type,
@@ -416,6 +431,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <MemberPage
           members={serializedMembers}
           memberships={serializedMemberships}
+          equipments={serializedEquipments}
           searchTerm={searchTerm}
           searchField={searchField}
           membershipFilter={membershipFilter}

@@ -19,6 +19,7 @@ model Member {
   createdAt         DateTime           @default(now())
   memberMemberships MemberMembership[]
   activities        MemberActivity[]
+  equipmentSales    EquipmentSale[]
 }
 
 model Membership {
@@ -77,4 +78,18 @@ model Equipment {
   price     Int
   status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
+  sales     EquipmentSale[]
+}
+
+model EquipmentSale {
+  id          Int       @id @default(autoincrement())
+  memberId    Int
+  equipmentId Int
+  price       Int
+  soldAt      DateTime  @default(now())
+  member      Member    @relation(fields: [memberId], references: [id])
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@index([memberId, soldAt])
+  @@index([equipmentId, soldAt])
 }

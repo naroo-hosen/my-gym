@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   checkInMember,
+  createEquipmentSale,
   createMember,
+  deleteEquipmentSale,
   deleteMember,
   extendMemberMembership,
   permanentlyDeleteMember,
@@ -33,6 +35,7 @@ type Member = {
   membershipPausedAt: string | null;
   membershipPauseEndsAt: string | null;
   membershipTotalPausedMs: number;
+  equipmentSales: EquipmentSale[];
   activities: MemberActivity[];
   createdAt: string;
 };
@@ -55,9 +58,26 @@ type MemberActivity = {
   createdAt: string;
 };
 
+type Equipment = {
+  id: number;
+  name: string;
+  price: number;
+  status: string;
+  createdAt: string;
+};
+
+type EquipmentSale = {
+  id: number;
+  equipmentId: number;
+  equipmentName: string;
+  price: number;
+  soldAt: string;
+};
+
 type MemberPageProps = {
   members: Member[];
   memberships: Membership[];
+  equipments: Equipment[];
   searchTerm: string;
   searchField: "name" | "phone" | "memo";
   membershipFilter: MembershipFilter;
@@ -159,6 +179,10 @@ const getActivityTypeLabel = (type: string) => {
       return "회원 복구";
     case "attendance_checked":
       return "출석 체크";
+    case "equipment_sold":
+      return "장비 판매";
+    case "equipment_sale_deleted":
+      return "장비 판매 취소";
     default:
       return "기타";
   }
@@ -182,6 +206,8 @@ const formatMembershipDuration = (
   duration: number,
   unit: "MONTH" | "DAY",
 ) => `${duration}${unit === "DAY" ? "일" : "개월"}`;
+
+const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
 const resolveExpiryDate = (
   expiresAt: string | null,
@@ -290,6 +316,7 @@ const HISTORY_PAGE_SIZE = 5;
 const MemberPage = ({
   members,
   memberships,
+  equipments,
   searchTerm,
   searchField,
   membershipFilter,
@@ -334,6 +361,9 @@ const MemberPage = ({
     key: SortKey | null;
     direction: "asc" | "desc";
   }>({ key: null, direction: "asc" });
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
+  const [pendingDeleteEquipmentSaleId, setPendingDeleteEquipmentSaleId] =
+    useState<number | null>(null);
   const membershipOptions = useMemo(
     () =>
       memberships
@@ -361,6 +391,16 @@ const MemberPage = ({
         )}원`,
       })),
     [memberships],
+  );
+  const equipmentOptions = useMemo(
+    () =>
+      equipments
+        .filter((equipment) => equipment.status !== "DELETE")
+        .map((equipment) => ({
+          id: equipment.id,
+          label: `${equipment.name} · ${formatPrice(equipment.price)}`,
+        })),
+    [equipments],
   );
 
   const countLabel = useMemo(
@@ -672,6 +712,7 @@ const MemberPage = ({
     if (selectedMemberId === null) {
       setIsHistoryOpen(false);
     }
+    setSelectedEquipmentId("");
     setHistoryTypeFilter("all");
     setHistoryPage(1);
   }, [selectedMemberId]);
@@ -885,6 +926,35 @@ const MemberPage = ({
 
   const closeEdit = () => {
     setEditingField(null);
+  };
+
+  const handleEquipmentSale = async (formData: FormData) => {
+    const result = await createEquipmentSale(formData);
+
+    if (result?.status === "invalid") {
+      alert("판매할 장비를 선택해 주세요.");
+      return;
+    }
+
+    setSelectedEquipmentId("");
+    startTransition(() => {
+      router.refresh();
+    });
+  };
+
+  const handleDeleteEquipmentSale = async (formData: FormData) => {
+    const result = await deleteEquipmentSale(formData);
+
+    if (result?.status === "invalid") {
+      alert("잘못된 요청입니다.");
+      setPendingDeleteEquipmentSaleId(null);
+      return;
+    }
+
+    setPendingDeleteEquipmentSaleId(null);
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const handleMembershipSave = () => {
@@ -1735,6 +1805,81 @@ const MemberPage = ({
                 </div>
               )}
             </div>
+            <div className="detail-sales">
+              <div className="panel-header">
+                <div>
+                  <h3 className="section-title">장비 판매</h3>
+                </div>
+                <span className="count">
+                  총 {selectedMember.equipmentSales.length}건
+                </span>
+              </div>
+              <form action={handleEquipmentSale} className="equipment-sale-form">
+                <input type="hidden" name="memberId" value={selectedMember.id} />
+                <div className="equipment-sale-row">
+                  <div>
+                    <label htmlFor="member-equipment-sale">판매 장비</label>
+                    <select
+                      id="member-equipment-sale"
+                      name="equipmentId"
+                      value={selectedEquipmentId}
+                      onChange={(event) =>
+                        setSelectedEquipmentId(event.target.value)
+                      }
+                      required
+                    >
+                      <option value="">장비를 선택하세요</option>
+                      {equipmentOptions.map((equipment) => (
+                        <option key={equipment.id} value={equipment.id}>
+                          {equipment.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="button-primary" type="submit">
+                    판매 등록
+                  </button>
+                </div>
+              </form>
+              {selectedMember.equipmentSales.length === 0 ? (
+                <p className="empty">아직 판매한 장비가 없어요.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table className="member-table">
+                    <thead>
+                      <tr>
+                        <th>판매일</th>
+                        <th>장비명</th>
+                        <th>판매가</th>
+                        <th>관리</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedMember.equipmentSales.map((sale) => (
+                        <tr key={sale.id} className="row">
+                          <td>
+                            {new Date(sale.soldAt).toLocaleDateString("ko-KR")}
+                          </td>
+                          <td>{sale.equipmentName}</td>
+                          <td>{formatPrice(sale.price)}</td>
+                          <td>
+                            <button
+                              className="button-danger button-small"
+                              type="button"
+                              onClick={() =>
+                                setPendingDeleteEquipmentSaleId(sale.id)
+                              }
+                            >
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </>
         )}
       </section>
@@ -1760,6 +1905,36 @@ const MemberPage = ({
                 <input type="hidden" name="id" value={pendingDeleteId} />
                 <button className="button-danger" type="submit">
                   중지하기
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDeleteEquipmentSaleId !== null && selectedMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              선택한 장비 판매 이력을 삭제할까요? 판매 이력은 영구 삭제되고,
+              매출관리에는 같은 금액의 지출이 자동 등록됩니다.
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingDeleteEquipmentSaleId(null)}
+              >
+                취소
+              </button>
+              <form action={handleDeleteEquipmentSale}>
+                <input
+                  type="hidden"
+                  name="equipmentSaleId"
+                  value={pendingDeleteEquipmentSaleId}
+                />
+                <button className="button-danger" type="submit">
+                  삭제하기
                 </button>
               </form>
             </div>

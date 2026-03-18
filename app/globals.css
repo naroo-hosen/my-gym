@@ -362,6 +362,31 @@ p {
   color: #6b7280;
 }
 
+.detail-sales {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  display: grid;
+  gap: 16px;
+}
+
+.equipment-sale-form {
+  display: grid;
+  gap: 12px;
+}
+
+.equipment-sale-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.button-small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;

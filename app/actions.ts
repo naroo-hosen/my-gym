@@ -844,6 +844,8 @@ export const createEquipmentSale = async (formData: FormData) => {
         amount: equipment.price,
         title: `${member.name} ${equipment.name} 판매`,
         description: paymentMethod,
+        paymentMethod,
+        installmentMonths: null,
       },
     });
 
@@ -906,6 +908,8 @@ export const deleteEquipmentSale = async (formData: FormData) => {
         amount: sale.price,
         title: `${sale.member.name} ${sale.equipment.name} 판매 취소`,
         description: sale.paymentMethod,
+        paymentMethod: sale.paymentMethod,
+        installmentMonths: null,
       },
     });
 

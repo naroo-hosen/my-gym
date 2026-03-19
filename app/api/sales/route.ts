@@ -9,6 +9,8 @@ type SalesEntryResponse = {
   amount: number;
   title: string;
   description: string;
+  paymentMethod: string;
+  installmentMonths: number | null;
 };
 
 type SalesEntryRequest = {
@@ -17,6 +19,8 @@ type SalesEntryRequest = {
   amount?: number;
   title?: string;
   description?: string;
+  paymentMethod?: string;
+  installmentMonths?: number | null;
 };
 
 const toDateOnly = (date: Date) => date.toISOString().slice(0, 10);
@@ -33,6 +37,8 @@ export const GET = async () => {
     amount: entry.amount,
     title: entry.title,
     description: entry.description,
+    paymentMethod: entry.paymentMethod,
+    installmentMonths: entry.installmentMonths,
   }));
 
   return NextResponse.json(payload);
@@ -52,6 +58,16 @@ export const POST = async (request: Request) => {
   const amount = Number(body?.amount);
   const title = body?.title?.toString().trim();
   const description = body?.description?.toString().trim() ?? "";
+  const paymentMethod = body?.paymentMethod?.toString().trim();
+  const rawInstallmentMonths = body?.installmentMonths;
+  const installmentMonths =
+    rawInstallmentMonths === null || rawInstallmentMonths === undefined
+      ? null
+      : Number(rawInstallmentMonths);
+  const hasValidCardInstallment =
+    installmentMonths !== null &&
+    Number.isInteger(installmentMonths) &&
+    installmentMonths >= 0;
 
   if (!type || (type !== "income" && type !== "expense")) {
     return NextResponse.json({ message: "invalid_type" }, { status: 400 });
@@ -69,6 +85,27 @@ export const POST = async (request: Request) => {
   if (!title) {
     return NextResponse.json({ message: "invalid_title" }, { status: 400 });
   }
+  if (!paymentMethod) {
+    return NextResponse.json(
+      { message: "invalid_payment_method" },
+      { status: 400 },
+    );
+  }
+  if (
+    paymentMethod === "카드" &&
+    !hasValidCardInstallment
+  ) {
+    return NextResponse.json(
+      { message: "invalid_installment_months" },
+      { status: 400 },
+    );
+  }
+  if (paymentMethod !== "카드" && installmentMonths !== null) {
+    return NextResponse.json(
+      { message: "invalid_installment_months" },
+      { status: 400 },
+    );
+  }
 
   const entry = await prisma.salesEntry.create({
     data: {
@@ -77,6 +114,8 @@ export const POST = async (request: Request) => {
       amount: Math.round(Math.abs(amount)),
       title,
       description,
+      paymentMethod,
+      installmentMonths,
     },
   });
 
@@ -87,6 +126,8 @@ export const POST = async (request: Request) => {
     amount: entry.amount,
     title: entry.title,
     description: entry.description,
+    paymentMethod: entry.paymentMethod,
+    installmentMonths: entry.installmentMonths,
   };
 
   return NextResponse.json(payload, { status: 201 });
@@ -130,6 +171,16 @@ export const PUT = async (request: Request) => {
   const amount = Number(body?.amount);
   const title = body?.title?.toString().trim();
   const description = body?.description?.toString().trim() ?? "";
+  const paymentMethod = body?.paymentMethod?.toString().trim();
+  const rawInstallmentMonths = body?.installmentMonths;
+  const installmentMonths =
+    rawInstallmentMonths === null || rawInstallmentMonths === undefined
+      ? null
+      : Number(rawInstallmentMonths);
+  const hasValidCardInstallment =
+    installmentMonths !== null &&
+    Number.isInteger(installmentMonths) &&
+    installmentMonths >= 0;
 
   if (!id || Number.isNaN(id)) {
     return NextResponse.json({ message: "invalid_id" }, { status: 400 });
@@ -150,6 +201,27 @@ export const PUT = async (request: Request) => {
   if (!title) {
     return NextResponse.json({ message: "invalid_title" }, { status: 400 });
   }
+  if (!paymentMethod) {
+    return NextResponse.json(
+      { message: "invalid_payment_method" },
+      { status: 400 },
+    );
+  }
+  if (
+    paymentMethod === "카드" &&
+    !hasValidCardInstallment
+  ) {
+    return NextResponse.json(
+      { message: "invalid_installment_months" },
+      { status: 400 },
+    );
+  }
+  if (paymentMethod !== "카드" && installmentMonths !== null) {
+    return NextResponse.json(
+      { message: "invalid_installment_months" },
+      { status: 400 },
+    );
+  }
 
   const existing = await prisma.salesEntry.findUnique({
     where: { id },
@@ -168,6 +240,8 @@ export const PUT = async (request: Request) => {
       amount: Math.round(Math.abs(amount)),
       title,
       description,
+      paymentMethod,
+      installmentMonths,
     },
   });
 
@@ -178,6 +252,8 @@ export const PUT = async (request: Request) => {
     amount: entry.amount,
     title: entry.title,
     description: entry.description,
+    paymentMethod: entry.paymentMethod,
+    installmentMonths: entry.installmentMonths,
   };
 
   return NextResponse.json(payload);

@@ -9,9 +9,21 @@ type SalesEntry = {
   amount: number;
   title: string;
   description: string;
+  paymentMethod: string;
+  installmentMonths: number | null;
 };
 
 type SalesViewType = "all" | SalesEntry["type"];
+
+const PAYMENT_METHOD_OPTIONS = [
+  "계좌이체",
+  "카드",
+  "포항사랑상품권",
+  "스포츠바우처",
+  "현금",
+  "네이버페이",
+  "기타",
+] as const;
 
 const getInputDate = (date: Date) => {
   const year = date.getFullYear();
@@ -40,6 +52,11 @@ const toDate = (value: string, endOfDay = false) => {
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("ko-KR").format(amount);
 
+const getInstallmentLabel = (installmentMonths: number | null) => {
+  if (installmentMonths === null) return "-";
+  return installmentMonths === 0 ? "일시불" : `${installmentMonths}개월`;
+};
+
 const SalesPage = () => {
   const defaultRange = useMemo(() => createDefaultRange(), []);
   const [entries, setEntries] = useState<SalesEntry[]>([]);
@@ -53,10 +70,20 @@ const SalesPage = () => {
   const [amount, setAmount] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<
+    (typeof PAYMENT_METHOD_OPTIONS)[number]
+  >("계좌이체");
+  const [customPaymentMethod, setCustomPaymentMethod] = useState("");
+  const [installmentMonths, setInstallmentMonths] = useState("0");
   const [startDate, setStartDate] = useState(defaultRange.start);
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [query, setQuery] = useState("");
   const [viewType, setViewType] = useState<SalesViewType>("all");
+
+  const resolvedPaymentMethod =
+    paymentMethod === "기타" ? customPaymentMethod.trim() : paymentMethod;
+  const requiresCustomPaymentMethod = paymentMethod === "기타";
+  const isCardPayment = paymentMethod === "카드";
 
   const resetForm = () => {
     setEditingId(null);
@@ -65,6 +92,9 @@ const SalesPage = () => {
     setAmount("");
     setTitle("");
     setDescription("");
+    setPaymentMethod("계좌이체");
+    setCustomPaymentMethod("");
+    setInstallmentMonths("0");
   };
 
   useEffect(() => {
@@ -96,6 +126,15 @@ const SalesPage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (paymentMethod !== "기타") {
+      setCustomPaymentMethod("");
+    }
+    if (paymentMethod !== "카드") {
+      setInstallmentMonths("0");
+    }
+  }, [paymentMethod]);
+
   const filteredEntries = useMemo(() => {
     const start = toDate(startDate);
     const end = toDate(endDate, true);
@@ -110,7 +149,8 @@ const SalesPage = () => {
       if (!term) return true;
       return (
         entry.title.toLowerCase().includes(term) ||
-        entry.description.toLowerCase().includes(term)
+        entry.description.toLowerCase().includes(term) ||
+        entry.paymentMethod.toLowerCase().includes(term)
       );
     });
   }, [entries, startDate, endDate, query, viewType]);
@@ -135,7 +175,12 @@ const SalesPage = () => {
     event.preventDefault();
 
     const numericAmount = Number(amount);
-    if (!date || !title.trim() || Number.isNaN(numericAmount)) {
+    if (
+      !date ||
+      !title.trim() ||
+      Number.isNaN(numericAmount) ||
+      !resolvedPaymentMethod
+    ) {
       return;
     }
 
@@ -153,6 +198,8 @@ const SalesPage = () => {
           amount: Math.abs(numericAmount),
           title: title.trim(),
           description: description.trim(),
+          paymentMethod: resolvedPaymentMethod,
+          installmentMonths: isCardPayment ? Number(installmentMonths) : null,
         }),
       });
 
@@ -183,6 +230,16 @@ const SalesPage = () => {
     setAmount(String(entry.amount));
     setTitle(entry.title);
     setDescription(entry.description);
+    if (PAYMENT_METHOD_OPTIONS.includes(entry.paymentMethod as (typeof PAYMENT_METHOD_OPTIONS)[number])) {
+      setPaymentMethod(
+        entry.paymentMethod as (typeof PAYMENT_METHOD_OPTIONS)[number],
+      );
+      setCustomPaymentMethod("");
+    } else {
+      setPaymentMethod("기타");
+      setCustomPaymentMethod(entry.paymentMethod);
+    }
+    setInstallmentMonths(String(entry.installmentMonths ?? 0));
   };
 
   const handleDeleteConfirm = async (entryId: number) => {
@@ -281,6 +338,53 @@ const SalesPage = () => {
                 required
               />
             </div>
+            <div>
+              <label htmlFor="sales-payment-method">결제수단</label>
+              <select
+                id="sales-payment-method"
+                value={paymentMethod}
+                onChange={(event) =>
+                  setPaymentMethod(
+                    event.target.value as (typeof PAYMENT_METHOD_OPTIONS)[number],
+                  )
+                }
+                required
+              >
+                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {requiresCustomPaymentMethod ? (
+              <div>
+                <label htmlFor="sales-payment-method-custom">
+                  기타 결제수단
+                </label>
+                <input
+                  id="sales-payment-method-custom"
+                  value={customPaymentMethod}
+                  onChange={(event) => setCustomPaymentMethod(event.target.value)}
+                  placeholder="결제수단을 직접 입력하세요"
+                  required
+                />
+              </div>
+            ) : null}
+            {isCardPayment ? (
+              <div>
+                <label htmlFor="sales-installment-months">할부 개월 수</label>
+                <input
+                  id="sales-installment-months"
+                  type="number"
+                  min="0"
+                  value={installmentMonths}
+                  onChange={(event) => setInstallmentMonths(event.target.value)}
+                  placeholder="일시불은 0 입력"
+                  required
+                />
+              </div>
+            ) : null}
             <div>
               <label htmlFor="sales-description">설명</label>
               <textarea
@@ -413,6 +517,8 @@ const SalesPage = () => {
                   <th>구분</th>
                   <th className="number">금액</th>
                   <th>항목명</th>
+                  <th>결제수단</th>
+                  <th>할부</th>
                   <th>설명</th>
                   <th>관리</th>
                 </tr>
@@ -436,6 +542,8 @@ const SalesPage = () => {
                         {formatCurrency(entry.amount)}원
                       </td>
                       <td>{entry.title}</td>
+                      <td>{entry.paymentMethod}</td>
+                      <td>{getInstallmentLabel(entry.installmentMonths)}</td>
                       <td className="sales-description">
                         {entry.description || "-"}
                       </td>
@@ -461,7 +569,7 @@ const SalesPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="empty">
+                    <td colSpan={8} className="empty">
                       해당 기간에 등록된 매출 항목이 없습니다.
                     </td>
                   </tr>

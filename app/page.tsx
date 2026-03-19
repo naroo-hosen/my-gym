@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import AttendancePage from "@/app/components/AttendancePage";
-import EquipmentPage from "@/app/components/EquipmentPage";
 import LockerPage from "@/app/components/LockerPage";
 import MarketingPage from "@/app/components/MarketingPage";
 import MemberPage from "@/app/components/MemberPage";
@@ -36,9 +35,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         ? "attendance"
         : searchParams?.section === "attendance-stats"
           ? "attendance-stats"
-          : searchParams?.section === "equipment"
-            ? "equipment"
-            : searchParams?.section === "locker"
+          : searchParams?.section === "locker"
               ? "locker"
         : searchParams?.section === "marketing"
           ? "marketing"
@@ -95,7 +92,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
 
   const isAttendanceSection = section === "attendance";
   const isAttendanceStatsSection = section === "attendance-stats";
-  const isEquipmentSection = section === "equipment";
   const isLockerSection = section === "locker";
   const isMarketingSection = section === "marketing";
   const isSalesSection = section === "sales";
@@ -110,14 +106,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const [
     members,
     memberships,
-    equipments,
     attendanceMembers,
     marketingMembers,
     todayNewMembers,
     totalMembersWithMembership,
   ] =
     await Promise.all([
-      isMarketingSection || isSalesSection || isEquipmentSection || isLockerSection
+      isMarketingSection || isSalesSection || isLockerSection
         ? Promise.resolve([])
         : prisma.member.findMany({
             where: {
@@ -141,14 +136,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
                   membership: true,
                 },
               },
-              equipmentSales: {
-                include: {
-                  equipment: true,
-                },
-                orderBy: {
-                  soldAt: "desc",
-                },
-              },
               activities: {
                 orderBy: {
                   createdAt: "desc",
@@ -159,25 +146,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: "desc",
             },
           }),
-      isMarketingSection || isSalesSection || isEquipmentSection || isLockerSection
+      isMarketingSection || isSalesSection || isLockerSection
         ? Promise.resolve([])
         : prisma.membership.findMany({
             orderBy: {
               createdAt: "desc",
             },
           }),
-      isEquipmentSection || section === "member"
-        ? prisma.equipment.findMany({
-            where: {
-              status: {
-                not: "DELETE",
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          })
-        : Promise.resolve([]),
       isAttendanceSection || isAttendanceStatsSection
         ? prisma.member.findMany({
             where: {
@@ -290,14 +265,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       membershipPauseEndsAt:
         latestMembership?.pauseEndsAt?.toISOString() ?? null,
       membershipTotalPausedMs: latestMembership?.totalPausedMs ?? 0,
-      equipmentSales: member.equipmentSales.map((sale) => ({
-        id: sale.id,
-        equipmentId: sale.equipmentId,
-        equipmentName: sale.equipment.name,
-        price: sale.price,
-        paymentMethod: sale.paymentMethod,
-        soldAt: sale.soldAt.toISOString(),
-      })),
       activities: member.activities.map((activity) => ({
         id: activity.id,
         type: activity.type,
@@ -336,13 +303,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     price: membership.price,
     status: membership.status,
     createdAt: membership.createdAt.toISOString(),
-  }));
-  const serializedEquipments = equipments.map((equipment) => ({
-    id: equipment.id,
-    name: equipment.name,
-    price: equipment.price,
-    status: equipment.status,
-    createdAt: equipment.createdAt.toISOString(),
   }));
   const marketingTargets = marketingMembers
     .map((member) => {
@@ -416,8 +376,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <AttendancePage members={serializedAttendanceMembers} />
       ) : section === "attendance-stats" ? (
         <AttendanceStatsPage members={serializedAttendanceMembers} />
-      ) : section === "equipment" ? (
-        <EquipmentPage equipments={serializedEquipments} />
       ) : section === "locker" ? (
         <LockerPage />
       ) : section === "marketing" ? (
@@ -432,7 +390,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <MemberPage
           members={serializedMembers}
           memberships={serializedMemberships}
-          equipments={serializedEquipments}
           searchTerm={searchTerm}
           searchField={searchField}
           membershipFilter={membershipFilter}

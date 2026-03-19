@@ -61,13 +61,15 @@ model MemberActivity {
 }
 
 model SalesEntry {
-  id          Int      @id @default(autoincrement())
-  type        String
-  date        DateTime
-  amount      Int
-  title       String
-  description String
-  createdAt   DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  type             String
+  date             DateTime
+  amount           Int
+  title            String
+  description      String
+  paymentMethod    String
+  installmentMonths Int?
+  createdAt        DateTime @default(now())
 
   @@index([date, type])
 }

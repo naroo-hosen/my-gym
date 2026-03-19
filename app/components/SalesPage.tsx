@@ -9,7 +9,7 @@ type SalesEntry = {
   amount: number;
   title: string;
   description: string;
-  paymentMethod: string;
+  paymentMethod: string | null;
   installmentMonths: number | null;
 };
 
@@ -71,8 +71,8 @@ const SalesPage = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
-    (typeof PAYMENT_METHOD_OPTIONS)[number]
-  >("계좌이체");
+    "" | (typeof PAYMENT_METHOD_OPTIONS)[number]
+  >("");
   const [customPaymentMethod, setCustomPaymentMethod] = useState("");
   const [installmentMonths, setInstallmentMonths] = useState("0");
   const [startDate, setStartDate] = useState(defaultRange.start);
@@ -81,7 +81,7 @@ const SalesPage = () => {
   const [viewType, setViewType] = useState<SalesViewType>("all");
 
   const resolvedPaymentMethod =
-    paymentMethod === "기타" ? customPaymentMethod.trim() : paymentMethod;
+    paymentMethod === "기타" ? customPaymentMethod.trim() : paymentMethod.trim();
   const requiresCustomPaymentMethod = paymentMethod === "기타";
   const isCardPayment = paymentMethod === "카드";
 
@@ -92,7 +92,7 @@ const SalesPage = () => {
     setAmount("");
     setTitle("");
     setDescription("");
-    setPaymentMethod("계좌이체");
+    setPaymentMethod("");
     setCustomPaymentMethod("");
     setInstallmentMonths("0");
   };
@@ -150,7 +150,7 @@ const SalesPage = () => {
       return (
         entry.title.toLowerCase().includes(term) ||
         entry.description.toLowerCase().includes(term) ||
-        entry.paymentMethod.toLowerCase().includes(term)
+        (entry.paymentMethod ?? "").toLowerCase().includes(term)
       );
     });
   }, [entries, startDate, endDate, query, viewType]);
@@ -230,7 +230,14 @@ const SalesPage = () => {
     setAmount(String(entry.amount));
     setTitle(entry.title);
     setDescription(entry.description);
-    if (PAYMENT_METHOD_OPTIONS.includes(entry.paymentMethod as (typeof PAYMENT_METHOD_OPTIONS)[number])) {
+    if (!entry.paymentMethod) {
+      setPaymentMethod("");
+      setCustomPaymentMethod("");
+    } else if (
+      PAYMENT_METHOD_OPTIONS.includes(
+        entry.paymentMethod as (typeof PAYMENT_METHOD_OPTIONS)[number],
+      )
+    ) {
       setPaymentMethod(
         entry.paymentMethod as (typeof PAYMENT_METHOD_OPTIONS)[number],
       );
@@ -345,11 +352,12 @@ const SalesPage = () => {
                 value={paymentMethod}
                 onChange={(event) =>
                   setPaymentMethod(
-                    event.target.value as (typeof PAYMENT_METHOD_OPTIONS)[number],
+                    event.target.value as "" | (typeof PAYMENT_METHOD_OPTIONS)[number],
                   )
                 }
                 required
               >
+                <option value="">선택하세요</option>
                 {PAYMENT_METHOD_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -542,7 +550,7 @@ const SalesPage = () => {
                         {formatCurrency(entry.amount)}원
                       </td>
                       <td>{entry.title}</td>
-                      <td>{entry.paymentMethod}</td>
+                      <td>{entry.paymentMethod || "-"}</td>
                       <td>{getInstallmentLabel(entry.installmentMonths)}</td>
                       <td className="sales-description">
                         {entry.description || "-"}

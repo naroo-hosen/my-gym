@@ -67,7 +67,7 @@ model SalesEntry {
   amount           Int
   title            String
   description      String
-  paymentMethod    String
+  paymentMethod    String?
   installmentMonths Int?
   createdAt        DateTime @default(now())
 

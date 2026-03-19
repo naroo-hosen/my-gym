@@ -9,7 +9,7 @@ type SalesEntryResponse = {
   amount: number;
   title: string;
   description: string;
-  paymentMethod: string;
+  paymentMethod: string | null;
   installmentMonths: number | null;
 };
 

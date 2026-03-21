@@ -350,13 +350,19 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
                     const remainingDays = getRemainingDays(slot.expiresAt);
                     const slotLabel = getSlotLabel(slot, section);
                     return (
-                      <button
-                        key={slot.lockerNumber}
-                        type="button"
-                        className={`locker-cell ${slot.memberId ? "is-occupied" : "is-empty"}`}
-                        onClick={() => openSlot(slot)}
-                        aria-label={`보관함 ${slotLabel} 클릭하여 연결`}
-                      >
+                        <button
+                          key={slot.lockerNumber}
+                          type="button"
+                          className={`locker-cell ${
+                            slot.memberId
+                              ? remainingDays !== null && remainingDays <= 0
+                                ? "is-occupied"
+                                : "is-occupied-green"
+                              : "is-empty"
+                          }`}
+                          onClick={() => openSlot(slot)}
+                          aria-label={`보관함 ${slotLabel} 클릭하여 연결`}
+                        >
                         {slot.memberName ? (
                           <>
                             <span className="locker-cell-member">{slot.memberName}</span>

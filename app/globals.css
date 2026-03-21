@@ -1425,9 +1425,19 @@ button {
   background: #fef2f2;
 }
 
+.locker-cell.is-occupied-green {
+  border-color: #34d399;
+  background: #ecfdf5;
+}
+
 .locker-cell.is-occupied:hover {
   border-color: #ef4444;
   background: #fee2e2;
+}
+
+.locker-cell.is-occupied-green:hover {
+  border-color: #10b981;
+  background: #d1fae5;
 }
 
 .locker-cell-member {

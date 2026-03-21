@@ -20,6 +20,7 @@ model Member {
   memberMemberships MemberMembership[]
   activities        MemberActivity[]
   equipmentSales    EquipmentSale[]
+  lockerSlots       LockerSlot[]
 }
 
 model Membership {
@@ -95,4 +96,18 @@ model EquipmentSale {
 
   @@index([memberId, soldAt])
   @@index([equipmentId, soldAt])
+}
+
+model LockerSlot {
+  id           Int       @id @default(autoincrement())
+  lockerNumber Int       @unique
+  section      String    @default("A")
+  memberId     Int?
+  assignedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  member       Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([memberId])
 }

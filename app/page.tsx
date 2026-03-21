@@ -110,6 +110,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     marketingMembers,
     todayNewMembers,
     totalMembersWithMembership,
+    lockerSlots,
+    lockerCandidates,
   ] =
     await Promise.all([
       isMarketingSection || isSalesSection || isLockerSection
@@ -228,6 +230,38 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
             },
           })
         : Promise.resolve(0),
+      isLockerSection
+        ? prisma.lockerSlot.findMany({
+            orderBy: {
+              lockerNumber: "asc",
+            },
+            include: {
+              member: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
+  isLockerSection
+        ? prisma.member.findMany({
+            where: {
+              status: {
+                not: "DELETE",
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              birthDate: true,
+            },
+            orderBy: {
+              name: "asc",
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
   const serializedMembers = members.map((member) => {
@@ -304,6 +338,43 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     status: membership.status,
     createdAt: membership.createdAt.toISOString(),
   }));
+  const toLockerDateString = (value: Date | null) => {
+    if (!value) {
+      return null;
+    }
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const lockerSlotMap = new Map(
+    lockerSlots.map((lockerSlot) => [lockerSlot.lockerNumber, lockerSlot]),
+  );
+  const serializedLockerSlots = Array.from({ length: 66 }, (_, index) => {
+    const lockerNumber = index + 1;
+    const lockerSlot = lockerSlotMap.get(lockerNumber);
+    if (!lockerSlot) {
+      return {
+        lockerNumber,
+        memberId: null,
+        memberName: null,
+        assignedAt: null,
+        expiresAt: null,
+      };
+    }
+    return {
+      lockerNumber: lockerSlot.lockerNumber,
+      memberId: lockerSlot.memberId,
+      memberName: lockerSlot.member?.name ?? null,
+      assignedAt: toLockerDateString(lockerSlot.assignedAt),
+      expiresAt: toLockerDateString(lockerSlot.expiresAt),
+    };
+  });
+  const serializedLockerMembers = lockerCandidates.map((member) => ({
+    id: member.id,
+    name: member.name,
+    birthDate: member.birthDate?.toISOString().slice(0, 10) ?? null,
+  }));
   const marketingTargets = marketingMembers
     .map((member) => {
       const latestMembership = member.memberMemberships.reduce(
@@ -377,7 +448,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : section === "attendance-stats" ? (
         <AttendanceStatsPage members={serializedAttendanceMembers} />
       ) : section === "locker" ? (
-        <LockerPage />
+        <LockerPage lockers={serializedLockerSlots} members={serializedLockerMembers} />
       ) : section === "marketing" ? (
         <MarketingPage
           buckets={marketingBuckets}

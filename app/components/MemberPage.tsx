@@ -78,7 +78,7 @@ type SortKey =
   | "assignedAt"
   | "expiresAt";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 20;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "ACTIVE", label: "정상" },
   { value: "DELETE", label: "중지" },

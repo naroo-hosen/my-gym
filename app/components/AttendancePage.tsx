@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type AttendanceActivity = {
   createdAt: string;
@@ -74,6 +75,7 @@ const formatDateValue = (value: string | null) => {
 };
 
 const AttendancePage = ({ members }: AttendancePageProps) => {
+  const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
   const visibleDates = useMemo(
     () => buildWeekDates(new Date(), weekOffset),
@@ -196,6 +198,53 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       latestAttendance,
     };
   }, [selectedMember, visibleDates, todayKey]);
+
+  const handleAttendanceCellClick = async (
+    member: AttendanceMember,
+    dateKey: string,
+    hasAttendance: boolean,
+  ) => {
+    const confirmMessage = hasAttendance
+      ? "출석체크 취소 처리 하시겠습니까?"
+      : "출석체크 처리 하시겠습니까?";
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/attendance/check-in", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: member.phone,
+          date: dateKey,
+          action: hasAttendance ? "uncheck" : "check",
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        alert(
+          payload?.message ?? "요청 처리 중 오류가 발생했습니다.",
+        );
+        return;
+      }
+
+      const isSuccess =
+        (!hasAttendance && payload?.status === "ok") ||
+        (hasAttendance && payload?.status === "canceled");
+      if (!isSuccess) {
+        alert(payload?.message ?? "요청을 처리할 수 없습니다.");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      alert("서버와 통신 중 오류가 발생했습니다.");
+    }
+  };
 
   useEffect(() => {
     if (!scrollContainerRef.current) {
@@ -442,6 +491,27 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                       className={`attendance-cell${
                         hasAttendance ? " checked" : ""
                       } is-current-week${isToday ? " is-today" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleAttendanceCellClick(
+                          member,
+                          dateKey,
+                          hasAttendance,
+                        );
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleAttendanceCellClick(
+                            member,
+                            dateKey,
+                            hasAttendance,
+                          );
+                        }
+                      }}
                     >
                       {hasAttendance ? "✔︎" : "-"}
                     </div>

@@ -11,11 +11,18 @@ type CheckInStatus =
   | "limit"
   | "ok";
 
+type AttendanceToggleStatus = CheckInStatus | "not_checked" | "canceled";
+
+type AttendanceTargetResult = {
+  status: AttendanceToggleStatus;
+};
+
 type MemberActivityPayload = {
   memberId: number;
   type: string;
   description: string;
   metadata?: Record<string, unknown>;
+  createdAt?: Date;
 };
 
 const createMemberActivity = async (
@@ -27,6 +34,7 @@ const createMemberActivity = async (
       memberId: payload.memberId,
       type: payload.type,
       description: payload.description,
+      ...(payload.createdAt ? { createdAt: payload.createdAt } : {}),
       metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
     },
   });
@@ -71,6 +79,17 @@ const getAdjustedExpiryDate = (memberMembership: {
   return adjusted;
 };
 
+const getDayRange = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  if (Number.isNaN(start.getTime())) {
+    return null;
+  }
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  return { start, end };
+};
+
 const getWeekRange = (baseDate = new Date()) => {
   const start = new Date(baseDate);
   const day = start.getDay();
@@ -85,8 +104,14 @@ const getWeekRange = (baseDate = new Date()) => {
 export const checkInMemberById = async (
   prisma: PrismaClientLike,
   memberId: number,
+  targetDate = new Date(),
 ) => {
   if (!memberId) {
+    return { status: "invalid" as CheckInStatus };
+  }
+
+  const dayRange = getDayRange(targetDate);
+  if (!dayRange) {
     return { status: "invalid" as CheckInStatus };
   }
 
@@ -127,8 +152,7 @@ export const checkInMemberById = async (
     return { status: "invalid" as CheckInStatus };
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = dayRange.start;
   const expiryDateOnly = new Date(expiryDate);
   expiryDateOnly.setHours(0, 0, 0, 0);
 
@@ -136,8 +160,7 @@ export const checkInMemberById = async (
     return { status: "expired" as CheckInStatus };
   }
 
-  const todayEnd = new Date(today);
-  todayEnd.setDate(todayEnd.getDate() + 1);
+  const todayEnd = dayRange.end;
   const todayAttendanceCount = await prisma.memberActivity.count({
     where: {
       memberId,
@@ -153,7 +176,7 @@ export const checkInMemberById = async (
     return { status: "already_checked" as CheckInStatus };
   }
 
-  const { start, end } = getWeekRange();
+  const { start, end } = getWeekRange(targetDate);
   const latestMembershipAssigned = await prisma.memberActivity.findFirst({
     where: {
       memberId,
@@ -186,6 +209,7 @@ export const checkInMemberById = async (
     memberId,
     type: "attendance_checked",
     description: "출석 체크",
+    createdAt: dayRange.start,
     metadata: {
       weeklyAttendance: memberMembership.membership.weeklyAttendance,
       attendanceCount: attendanceCount + 1,
@@ -193,4 +217,48 @@ export const checkInMemberById = async (
   });
 
   return { status: "ok" as CheckInStatus };
+};
+
+export const uncheckAttendanceMemberByDate = async (
+  prisma: PrismaClientLike,
+  memberId: number,
+  targetDate = new Date(),
+) => {
+  if (!memberId) {
+    return { status: "invalid" as AttendanceToggleStatus };
+  }
+
+  const dayRange = getDayRange(targetDate);
+  if (!dayRange) {
+    return { status: "invalid" as AttendanceToggleStatus };
+  }
+
+  const existingAttendance = await prisma.memberActivity.findFirst({
+    where: {
+      memberId,
+      type: "attendance_checked",
+      createdAt: {
+        gte: dayRange.start,
+        lt: dayRange.end,
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existingAttendance) {
+    return { status: "not_checked" as AttendanceToggleStatus };
+  }
+
+  await prisma.memberActivity.delete({
+    where: {
+      id: existingAttendance.id,
+    },
+  });
+
+  return { status: "canceled" as AttendanceToggleStatus };
 };

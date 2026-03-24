@@ -6,6 +6,7 @@ type MembershipDurationUnit = "MONTH" | "DAY";
 
 type CheckInStatus =
   | "invalid"
+  | "not_started"
   | "expired"
   | "already_checked"
   | "limit"
@@ -153,6 +154,9 @@ export const checkInMemberById = async (
   }
 
   const today = dayRange.start;
+  if (memberMembership.assignedAt > today) {
+    return { status: "not_started" as CheckInStatus };
+  }
   const expiryDateOnly = new Date(expiryDate);
   expiryDateOnly.setHours(0, 0, 0, 0);
 

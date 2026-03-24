@@ -74,8 +74,19 @@ const formatDateValue = (value: string | null) => {
   return parsed.toLocaleDateString("ko-KR");
 };
 
+const hasMembershipStarted = (assignedAt: string | null) => {
+  if (!assignedAt) return false;
+  const parsed = new Date(assignedAt);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed <= new Date();
+};
+
 const AttendancePage = ({ members }: AttendancePageProps) => {
   const router = useRouter();
+  const activeMembers = useMemo(
+    () => members.filter((member) => hasMembershipStarted(member.membershipAssignedAt)),
+    [members],
+  );
   const [weekOffset, setWeekOffset] = useState(0);
   const visibleDates = useMemo(
     () => buildWeekDates(new Date(), weekOffset),
@@ -104,7 +115,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       map.set(formatDateKey(date), 0);
     });
 
-    members.forEach((member) => {
+    activeMembers.forEach((member) => {
       const memberAttendance = new Set(
         member.activities.map((activity) => {
           const activityDate = new Date(activity.createdAt);
@@ -119,16 +130,16 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
     });
 
     return map;
-  }, [allDates, members]);
+  }, [activeMembers, allDates]);
   const attendanceSummary = useMemo(() => {
-    const totalMembers = members.length;
+    const totalMembers = activeMembers.length;
     const selectedWeekKeys = new Set(
       visibleDates.map((date) => formatDateKey(date)),
     );
     let todayCount = 0;
     let selectedWeekCount = 0;
 
-    members.forEach((member) => {
+    activeMembers.forEach((member) => {
       const attendanceDates = new Set(
         member.activities.map((activity) => {
           const activityDate = new Date(activity.createdAt);
@@ -165,10 +176,10 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       selectedWeekRate,
       absentCount,
     };
-  }, [members, visibleDates, todayKey]);
+  }, [activeMembers, visibleDates, todayKey]);
   const selectedMember = useMemo(
-    () => members.find((member) => member.id === selectedMemberId) ?? null,
-    [members, selectedMemberId],
+    () => activeMembers.find((member) => member.id === selectedMemberId) ?? null,
+    [activeMembers, selectedMemberId],
   );
   const selectedMemberAttendance = useMemo(() => {
     if (!selectedMember) return null;
@@ -260,7 +271,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         <div>
           <h2 className="section-title">출석 현황</h2>
           <p className="section-subtitle">
-            회원권 보유 및 일시정지 상태가 아닌 회원의 최근 1주일 출석 기록을
+            시작일이 지난 회원권 보유 회원의 최근 1주일 출석 기록을
             확인합니다.
           </p>
         </div>
@@ -375,7 +386,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             <div className="attendance-cell">연락처</div>
             <div className="attendance-cell">회원권</div>
           </div>
-          {members.map((member) => {
+          {activeMembers.map((member) => {
             const isSelected = selectedMemberId === member.id;
             return (
               <div
@@ -448,7 +459,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 );
               })}
             </div>
-            {members.map((member) => {
+            {activeMembers.map((member) => {
               const attendanceDates = new Set(
                 member.activities.map((activity) => {
                   const activityDate = new Date(activity.createdAt);

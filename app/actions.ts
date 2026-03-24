@@ -102,6 +102,7 @@ export const updateMember = async (formData: FormData) => {
   const rawParentPhone = formData.get("parentPhone");
   const rawMemo = formData.get("memo");
   const rawMembershipId = formData.get("membershipId");
+  const rawMembershipStartDate = formData.get("membershipStartDate");
 
   if (!id) {
     return;
@@ -154,7 +155,7 @@ export const updateMember = async (formData: FormData) => {
 
   let membershipSelection:
     | { type: "clear" }
-    | { type: "assign"; membershipId: number }
+    | { type: "assign"; membershipId: number; startDate: Date }
     | null = null;
   if (rawMembershipId !== null) {
     const membershipValue = rawMembershipId.toString().trim();
@@ -163,7 +164,15 @@ export const updateMember = async (formData: FormData) => {
     } else {
       const membershipId = Number(membershipValue);
       if (membershipId) {
-        membershipSelection = { type: "assign", membershipId };
+        const membershipStartDateValue =
+          rawMembershipStartDate?.toString().trim() ?? "";
+        const startDate = membershipStartDateValue
+          ? new Date(`${membershipStartDateValue}T00:00:00`)
+          : new Date();
+        if (Number.isNaN(startDate.getTime())) {
+          return;
+        }
+        membershipSelection = { type: "assign", membershipId, startDate };
       }
     }
   }
@@ -278,7 +287,7 @@ export const updateMember = async (formData: FormData) => {
       membershipDuration &&
       membershipDurationUnit
     ) {
-      const assignedAt = new Date();
+      const assignedAt = membershipSelection.startDate;
       const expiresAt = getMembershipExpiryDate(
         assignedAt,
         membershipDuration,
@@ -313,6 +322,7 @@ export const updateMember = async (formData: FormData) => {
           description,
           metadata: {
             membershipId: selectedMembership.id,
+            assignedAt: assignedAt.toISOString(),
             duration: selectedMembership.duration,
             durationUnit: selectedMembership.durationUnit,
             weeklyAttendance: selectedMembership.weeklyAttendance,

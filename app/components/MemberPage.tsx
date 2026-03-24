@@ -175,11 +175,11 @@ const getInputDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const formatDateInput = (value: string | null) => {
+const formatDateInput = (value: string | Date | null) => {
   if (!value) return "";
-  const date = new Date(value);
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().split("T")[0];
+  return getInputDate(date);
 };
 
 const formatMembershipDuration = (
@@ -279,6 +279,17 @@ const formatRemainingDaysLabel = (remainingDays: number | null) => {
   return `${remainingDays}일`;
 };
 
+const hasMembershipStarted = (assignedAt: string | null) => {
+  if (!assignedAt) {
+    return false;
+  }
+  const startDate = new Date(assignedAt);
+  if (Number.isNaN(startDate.getTime())) {
+    return false;
+  }
+  return startDate <= new Date();
+};
+
 type EditableField =
   | "name"
   | "phone"
@@ -319,6 +330,7 @@ const MemberPage = ({
   const [pendingMembershipAction, setPendingMembershipAction] = useState<{
     type: "assign" | "clear";
     membershipId: string;
+    membershipStartDate: string;
   } | null>(null);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState(searchTerm);
@@ -330,6 +342,7 @@ const MemberPage = ({
   const [statusSelections, setStatusSelections] =
     useState<StatusFilter[]>([]);
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
+  const [membershipStartDateDraft, setMembershipStartDateDraft] = useState("");
   const [expiryExtensionDate, setExpiryExtensionDate] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
@@ -394,7 +407,8 @@ const MemberPage = ({
       ? getStatusLabel(
           selectedMember.status,
           Boolean(selectedMember.membershipPausedAt),
-          Boolean(selectedMember.membershipId),
+          Boolean(selectedMember.membershipId) &&
+            hasMembershipStarted(selectedMember.membershipAssignedAt),
         )
       : null;
   const selectedMembershipRemainingDays = useMemo(
@@ -683,8 +697,13 @@ const MemberPage = ({
   useEffect(() => {
     if (editingField === "membershipId") {
       setMembershipDraftValue(selectedMembershipValue);
+      setMembershipStartDateDraft(
+        selectedMember?.membershipAssignedAt
+          ? formatDateInput(selectedMember.membershipAssignedAt)
+          : getInputDate(new Date()),
+      );
     }
-  }, [editingField, selectedMembershipValue]);
+  }, [editingField, selectedMember?.membershipAssignedAt, selectedMembershipValue]);
 
   const resolvedStatusSelections = useMemo(() => {
     if (statusFilters.length === 0) {
@@ -900,11 +919,13 @@ const MemberPage = ({
       setPendingMembershipAction({
         type: "clear",
         membershipId: "none",
+        membershipStartDate: "",
       });
     } else {
       setPendingMembershipAction({
         type: "assign",
         membershipId: membershipDraftValue,
+        membershipStartDate: membershipStartDateDraft,
       });
     }
   };
@@ -1150,7 +1171,8 @@ const MemberPage = ({
                   const statusInfo = getStatusLabel(
                     member.status,
                     Boolean(member.membershipPausedAt),
-                    Boolean(member.membershipId),
+                    Boolean(member.membershipId) &&
+                      hasMembershipStarted(member.membershipAssignedAt),
                   );
                   const resolvedExpiryDate = resolveExpiryDate(
                     member.membershipExpiresAt,
@@ -1573,6 +1595,20 @@ const MemberPage = ({
                         </option>
                       ))}
                     </select>
+                    {membershipDraftValue !== "none" ? (
+                      <label className="modal-field">
+                        <span>시작일</span>
+                        <input
+                          name="membershipStartDate"
+                          type="date"
+                          required
+                          value={membershipStartDateDraft}
+                          onChange={(event) =>
+                            setMembershipStartDateDraft(event.target.value)
+                          }
+                        />
+                      </label>
+                    ) : null}
                     <div className="detail-edit-actions">
                       <button
                         className="button-primary"
@@ -1820,7 +1856,12 @@ const MemberPage = ({
           <div className="modal confirm-modal" role="dialog" aria-modal="true">
             <p className="confirm-message">
               {pendingMembershipAction.type === "assign"
-                ? "회원권을 부여하면 지금부터 바로 적용됩니다. 진행할까요?"
+                ? pendingMembershipAction.membershipStartDate ===
+                  getInputDate(new Date())
+                  ? "회원권을 부여하면 오늘부터 적용됩니다. 진행할까요?"
+                  : `회원권을 ${new Date(
+                      `${pendingMembershipAction.membershipStartDate}T00:00:00`,
+                    ).toLocaleDateString("ko-KR")}부터 적용할까요?`
                 : "회원권 부여를 취소하면 복구할 수 없습니다. 진행할까요?"}
             </p>
             <div className="panel-actions center">
@@ -1843,6 +1884,11 @@ const MemberPage = ({
                   type="hidden"
                   name="membershipId"
                   value={pendingMembershipAction.membershipId}
+                />
+                <input
+                  type="hidden"
+                  name="membershipStartDate"
+                  value={pendingMembershipAction.membershipStartDate}
                 />
                 <button className="button-primary" type="submit">
                   확인

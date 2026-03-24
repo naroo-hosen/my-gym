@@ -221,6 +221,7 @@ export const POST = async (request: Request) => {
     ok: "출석체크가 완료되었습니다.",
     already_checked: "오늘은 이미 출석체크를 완료했습니다.",
     limit: "이번 주 출석 가능 횟수를 초과했습니다.",
+    not_started: "회원권 시작일이 아직 되지 않았습니다.",
     expired: "회원권이 만료되었습니다.",
     invalid: "요청할 수 없습니다.",
     not_checked: "해당 날짜에 출석 기록이 없습니다.",

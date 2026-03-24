@@ -98,6 +98,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const attendanceStart = new Date();
   attendanceStart.setHours(0, 0, 0, 0);
   attendanceStart.setDate(attendanceStart.getDate() - 13);
+  const now = new Date();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const tomorrowStart = new Date(todayStart);
@@ -162,11 +163,23 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               memberMemberships: {
                 some: {
                   pausedAt: null,
+                  assignedAt: {
+                    lte: now,
+                  },
                 },
               },
             },
             include: {
               memberMemberships: {
+                where: {
+                  pausedAt: null,
+                  assignedAt: {
+                    lte: now,
+                  },
+                },
+                orderBy: {
+                  assignedAt: "desc",
+                },
                 include: {
                   membership: true,
                 },

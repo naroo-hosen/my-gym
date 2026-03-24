@@ -71,7 +71,18 @@ const getCurrentMonthRange = () => {
   };
 };
 
+const hasMembershipStarted = (assignedAt: string | null) => {
+  if (!assignedAt) return false;
+  const parsed = new Date(assignedAt);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed <= new Date();
+};
+
 const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
+  const activeMembers = useMemo(
+    () => members.filter((member) => hasMembershipStarted(member.membershipAssignedAt)),
+    [members],
+  );
   const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start);
   const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end);
   const [showOnlyNoAttendance, setShowOnlyNoAttendance] = useState(false);
@@ -98,7 +109,7 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
       };
     }
 
-    const stats: MemberAttendanceStat[] = members.map((member) => {
+    const stats: MemberAttendanceStat[] = activeMembers.map((member) => {
       const count = member.activities.reduce((acc, activity) => {
         const createdAt = new Date(activity.createdAt);
         return createdAt >= start && createdAt <= end ? acc + 1 : acc;
@@ -133,9 +144,9 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
       activeMembersCount,
       memberStats: sortedStats,
     };
-  }, [members, startDate, endDate]);
+  }, [activeMembers, startDate, endDate]);
 
-  const absentMembersCount = members.length - activeMembersCount;
+  const absentMembersCount = activeMembers.length - activeMembersCount;
   const visibleMemberStats = showOnlyNoAttendance
     ? memberStats.filter((item) => item.count === 0)
     : memberStats;
@@ -205,8 +216,8 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
               className="attendance-summary-bar-fill is-weekly"
               style={{
                 width: `${
-                  members.length > 0
-                    ? Math.round((activeMembersCount / members.length) * 100)
+                  activeMembers.length > 0
+                    ? Math.round((activeMembersCount / activeMembers.length) * 100)
                     : 0
                 }%`,
               }}
@@ -224,8 +235,8 @@ const AttendanceStatsPage = ({ members }: AttendanceStatsPageProps) => {
               className="attendance-summary-bar-fill is-muted"
               style={{
                 width: `${
-                  members.length > 0
-                    ? Math.round((absentMembersCount / members.length) * 100)
+                  activeMembers.length > 0
+                    ? Math.round((absentMembersCount / activeMembers.length) * 100)
                     : 0
                 }%`,
               }}

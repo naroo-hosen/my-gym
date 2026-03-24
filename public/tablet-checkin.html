@@ -259,7 +259,11 @@
       const daysRemaining = document.getElementById("daysRemaining");
       const weeklyAttendance = document.getElementById("weeklyAttendance");
 
-      const API_BASE = "http://54.180.69.226:3000";
+      const API_BASE =
+        window.location.protocol === "http:" ||
+        window.location.protocol === "https:"
+          ? window.location.origin
+          : "http://54.180.69.226:3000";
 
       const formatPhone = (value) => {
         const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -390,6 +394,9 @@
               break;
             case "limit":
               setStatus("이번 주 출석 가능 횟수를 초과했습니다.", "error", true);
+              break;
+            case "not_started":
+              setStatus("회원권 시작일이 아직 되지 않았습니다.", "error", true);
               break;
             case "expired":
               setStatus("회원권이 만료되었습니다.", "error", true);

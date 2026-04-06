@@ -8,6 +8,185 @@ import SalesPage from "@/app/components/SalesPage";
 import AttendanceStatsPage from "@/app/components/AttendanceStatsPage";
 import Sidebar from "@/app/components/Sidebar";
 
+type MembershipActivity = {
+  type: string;
+  createdAt: Date;
+  metadata: string | null;
+};
+
+type MarketingTargetMember = {
+  id: number;
+  name: string;
+  phone: string;
+  memberMemberships: {
+    assignedAt: Date;
+    expiresAt: Date | null;
+    totalPausedMs: number;
+  }[];
+  activities: MembershipActivity[];
+};
+
+const getMembershipExpiryDate = (
+  assignedAt: Date,
+  duration: number,
+  durationUnit: "MONTH" | "DAY",
+) => {
+  const expiresAt = new Date(assignedAt);
+
+  if (durationUnit === "DAY") {
+    expiresAt.setDate(expiresAt.getDate() + Math.max(duration - 1, 0));
+    expiresAt.setHours(23, 59, 59, 999);
+    return expiresAt;
+  }
+
+  expiresAt.setMonth(expiresAt.getMonth() + duration);
+  return expiresAt;
+};
+
+const parseActivityMetadata = (metadata: string | null) => {
+  if (!metadata) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(metadata) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const resolveCurrentMembershipExpiry = (
+  memberMemberships: MarketingTargetMember["memberMemberships"],
+) => {
+  const latestMembership = memberMemberships.reduce(
+    (latest, current) =>
+      !latest || current.assignedAt > latest.assignedAt ? current : latest,
+    null as MarketingTargetMember["memberMemberships"][number] | null,
+  );
+
+  if (!latestMembership?.expiresAt) {
+    return null;
+  }
+
+  const adjustedExpiry = new Date(latestMembership.expiresAt);
+  if (Number.isNaN(adjustedExpiry.getTime())) {
+    return null;
+  }
+
+  adjustedExpiry.setTime(
+    adjustedExpiry.getTime() + (latestMembership.totalPausedMs ?? 0),
+  );
+
+  return adjustedExpiry;
+};
+
+const analyzeMarketingMember = (
+  member: MarketingTargetMember,
+  now: Date,
+) => {
+  const chronologicalActivities = [...member.activities].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  );
+  let resolvedExpiry: Date | null = null;
+  let lastKnownExpiry: Date | null = null;
+  let expiredHistoryCount = 0;
+  let reRegisteredCount = 0;
+
+  chronologicalActivities.forEach((activity) => {
+    const metadata = parseActivityMetadata(activity.metadata);
+
+    if (activity.type === "membership_assigned") {
+      const assignedAtValue = metadata?.assignedAt;
+      const durationValue = metadata?.duration;
+      const durationUnitValue = metadata?.durationUnit;
+      const assignedAt =
+        typeof assignedAtValue === "string" ? new Date(assignedAtValue) : null;
+      const duration =
+        typeof durationValue === "number" ? durationValue : Number(durationValue);
+      const durationUnit =
+        durationUnitValue === "DAY"
+          ? "DAY"
+          : durationUnitValue === "MONTH"
+            ? "MONTH"
+            : null;
+
+      if (
+        resolvedExpiry &&
+        assignedAt &&
+        !Number.isNaN(assignedAt.getTime()) &&
+        assignedAt.getTime() > resolvedExpiry.getTime()
+      ) {
+        expiredHistoryCount += 1;
+        reRegisteredCount += 1;
+      }
+
+      if (
+        assignedAt &&
+        !Number.isNaN(assignedAt.getTime()) &&
+        Number.isFinite(duration) &&
+        durationUnit
+      ) {
+        resolvedExpiry = getMembershipExpiryDate(assignedAt, duration, durationUnit);
+        lastKnownExpiry = resolvedExpiry;
+      }
+
+      return;
+    }
+
+    if (activity.type === "membership_extended") {
+      const nextExpiryValue = metadata?.nextExpiry;
+      const nextExpiry =
+        typeof nextExpiryValue === "string" ? new Date(nextExpiryValue) : null;
+
+      if (nextExpiry && !Number.isNaN(nextExpiry.getTime())) {
+        resolvedExpiry = nextExpiry;
+        lastKnownExpiry = nextExpiry;
+      }
+
+      return;
+    }
+
+    if (activity.type === "membership_resumed" && resolvedExpiry) {
+      const pausedDurationMsValue = metadata?.pausedDurationMs;
+      const pausedDurationMs =
+        typeof pausedDurationMsValue === "number"
+          ? pausedDurationMsValue
+          : Number(pausedDurationMsValue);
+
+      if (Number.isFinite(pausedDurationMs) && pausedDurationMs > 0) {
+        resolvedExpiry = new Date(resolvedExpiry.getTime() + pausedDurationMs);
+        lastKnownExpiry = resolvedExpiry;
+      }
+
+      return;
+    }
+
+    if (activity.type === "membership_revoked") {
+      resolvedExpiry = null;
+    }
+  });
+
+  const currentExpiry = resolveCurrentMembershipExpiry(member.memberMemberships);
+  if (currentExpiry) {
+    lastKnownExpiry = currentExpiry;
+  }
+
+  const isCurrentlyExpired =
+    !!lastKnownExpiry && lastKnownExpiry.getTime() < now.getTime();
+
+  if (isCurrentlyExpired) {
+    expiredHistoryCount += 1;
+  }
+
+  return {
+    currentExpiry,
+    lastKnownExpiry,
+    expiredHistoryCount,
+    reRegisteredCount,
+    isCurrentlyExpired,
+  };
+};
+
 type HomePageProps = {
   searchParams?: {
     q?: string;
@@ -203,18 +382,28 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         ? prisma.member.findMany({
             where: {
               status: "ACTIVE",
-              memberMemberships: {
-                some: {
-                  expiresAt: {
-                    not: null,
-                  },
-                },
-              },
             },
             include: {
               memberMemberships: {
-                include: {
-                  membership: true,
+                select: {
+                  assignedAt: true,
+                  expiresAt: true,
+                  totalPausedMs: true,
+                },
+              },
+              activities: {
+                where: {
+                  type: {
+                    in: [
+                      "membership_assigned",
+                      "membership_extended",
+                      "membership_resumed",
+                      "membership_revoked",
+                    ],
+                  },
+                },
+                orderBy: {
+                  createdAt: "desc",
                 },
               },
             },
@@ -388,28 +577,24 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     name: member.name,
     birthDate: member.birthDate?.toISOString().slice(0, 10) ?? null,
   }));
-  const marketingTargets = marketingMembers
+  const typedMarketingMembers = marketingMembers as MarketingTargetMember[];
+  const analyzedMarketingMembers = typedMarketingMembers.map((member) => ({
+    member,
+    analysis: analyzeMarketingMember(member, now),
+  }));
+  const marketingTargets = typedMarketingMembers
     .map((member) => {
-      const latestMembership = member.memberMemberships.reduce(
-        (latest, current) =>
-          !latest || current.assignedAt > latest.assignedAt ? current : latest,
-        null as (typeof member.memberMemberships)[number] | null,
-      );
-      if (!latestMembership?.expiresAt) {
+      const resolvedExpiry = resolveCurrentMembershipExpiry(member.memberMemberships);
+
+      if (!resolvedExpiry) {
         return null;
       }
-      const adjustedExpiry = new Date(latestMembership.expiresAt);
-      if (Number.isNaN(adjustedExpiry.getTime())) {
-        return null;
-      }
-      adjustedExpiry.setTime(
-        adjustedExpiry.getTime() + (latestMembership.totalPausedMs ?? 0),
-      );
+
       return {
         id: member.id,
         name: member.name,
         phone: member.phone,
-        expiresAt: adjustedExpiry.toISOString(),
+        expiresAt: resolvedExpiry.toISOString(),
       };
     })
     .filter(
@@ -449,6 +634,80 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
     );
   });
+  const expiredMarketingMembers = analyzedMarketingMembers
+    .map(({ member, analysis }) => {
+      if (
+        !analysis.lastKnownExpiry ||
+        Number.isNaN(analysis.lastKnownExpiry.getTime()) ||
+        !analysis.isCurrentlyExpired
+      ) {
+        return null;
+      }
+
+      if (analysis.lastKnownExpiry.getTime() >= today.getTime()) {
+        return null;
+      }
+
+      const reRegistrationRate =
+        analysis.expiredHistoryCount > 0
+          ? Math.round(
+              (analysis.reRegisteredCount / analysis.expiredHistoryCount) * 100,
+            )
+          : 0;
+
+      return {
+        id: member.id,
+        name: member.name,
+        phone: member.phone,
+        expiresAt: analysis.lastKnownExpiry.toISOString(),
+        reRegistrationRate,
+        reRegisteredCount: analysis.reRegisteredCount,
+        expiredHistoryCount: analysis.expiredHistoryCount,
+      };
+    })
+    .filter(
+      (
+        member,
+      ): member is {
+        id: number;
+        name: string;
+        phone: string;
+        expiresAt: string;
+        reRegistrationRate: number;
+        reRegisteredCount: number;
+        expiredHistoryCount: number;
+      } =>
+        member !== null,
+    )
+    .sort(
+      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+    );
+  const reRegistrationSummary = analyzedMarketingMembers.reduce(
+    (summary, { analysis }) => {
+      return {
+        expiredHistoryCount:
+          summary.expiredHistoryCount + analysis.expiredHistoryCount,
+        reRegisteredCount:
+          summary.reRegisteredCount + analysis.reRegisteredCount,
+        currentlyExpiredCount: analysis.isCurrentlyExpired
+          ? summary.currentlyExpiredCount + 1
+          : summary.currentlyExpiredCount,
+      };
+    },
+    {
+      expiredHistoryCount: 0,
+      reRegisteredCount: 0,
+      currentlyExpiredCount: 0,
+    },
+  );
+  const reRegistrationRate =
+    reRegistrationSummary.expiredHistoryCount > 0
+      ? Math.round(
+          (reRegistrationSummary.reRegisteredCount /
+            reRegistrationSummary.expiredHistoryCount) *
+            100,
+        )
+      : 0;
 
   return (
     <main className="page">
@@ -465,6 +724,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       ) : section === "marketing" ? (
         <MarketingPage
           buckets={marketingBuckets}
+          expiredMembers={expiredMarketingMembers}
+          reRegistrationRate={reRegistrationRate}
+          reRegisteredCount={reRegistrationSummary.reRegisteredCount}
+          expiredHistoryCount={reRegistrationSummary.expiredHistoryCount}
+          currentlyExpiredCount={reRegistrationSummary.currentlyExpiredCount}
           todayNewMembers={todayNewMembers}
           totalMembersWithMembership={totalMembersWithMembership}
         />

@@ -84,6 +84,24 @@ const getMembershipExpiryDate = (
   return nextExpiry;
 };
 
+const createMemberActivity = async (
+  transaction: typeof prisma,
+  payload: {
+    memberId: number;
+    type: string;
+    description: string;
+    metadata?: Record<string, unknown>;
+  },
+) =>
+  transaction.memberActivity.create({
+    data: {
+      memberId: payload.memberId,
+      type: payload.type,
+      description: payload.description,
+      metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
+    },
+  });
+
 const resumePausedMemberships = async (now: Date) => {
   const pausedMemberships = await prisma.memberMembership.findMany({
     where: {
@@ -152,13 +170,54 @@ const runMembershipExpiryBatch = async () => {
 
   await resumePausedMemberships(now);
 
-  await prisma.memberMembership.deleteMany({
+  const expiredMemberships = await prisma.memberMembership.findMany({
     where: {
       pausedAt: null,
       expiresAt: {
         lt: now,
       },
     },
+    include: {
+      membership: {
+        select: {
+          duration: true,
+          durationUnit: true,
+          weeklyAttendance: true,
+          price: true,
+        },
+      },
+    },
+  });
+
+  if (!expiredMemberships.length) {
+    return;
+  }
+
+  await prisma.$transaction(async (transaction) => {
+    for (const expiredMembership of expiredMemberships) {
+      await createMemberActivity(transaction as typeof prisma, {
+        memberId: expiredMembership.memberId,
+        type: "membership_expired",
+        description: "회원권 만료",
+        metadata: {
+          membershipId: expiredMembership.membershipId,
+          assignedAt: expiredMembership.assignedAt.toISOString(),
+          expiredAt: expiredMembership.expiresAt?.toISOString() ?? null,
+          duration: expiredMembership.membership?.duration ?? null,
+          durationUnit: expiredMembership.membership?.durationUnit ?? null,
+          weeklyAttendance: expiredMembership.membership?.weeklyAttendance ?? null,
+          price: expiredMembership.membership?.price ?? null,
+        },
+      });
+    }
+
+    await transaction.memberMembership.deleteMany({
+      where: {
+        id: {
+          in: expiredMemberships.map((membership) => membership.id),
+        },
+      },
+    });
   });
 };
 

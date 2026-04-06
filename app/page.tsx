@@ -133,6 +133,19 @@ const analyzeMarketingMember = (
       return;
     }
 
+    if (activity.type === "membership_expired") {
+      const expiredAtValue = metadata?.expiredAt;
+      const expiredAt =
+        typeof expiredAtValue === "string" ? new Date(expiredAtValue) : null;
+
+      if (expiredAt && !Number.isNaN(expiredAt.getTime())) {
+        resolvedExpiry = expiredAt;
+        lastKnownExpiry = expiredAt;
+      }
+
+      return;
+    }
+
     if (activity.type === "membership_extended") {
       const nextExpiryValue = metadata?.nextExpiry;
       const nextExpiry =
@@ -396,6 +409,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
                   type: {
                     in: [
                       "membership_assigned",
+                      "membership_expired",
                       "membership_extended",
                       "membership_resumed",
                       "membership_revoked",

@@ -542,6 +542,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         activeMembership?.assignedAt.toISOString() ?? null,
       activities: member.activities.map((activity) => ({
         createdAt: activity.createdAt.toISOString(),
+        attendanceTime: activity.createdAt.toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
       })),
     };
   });

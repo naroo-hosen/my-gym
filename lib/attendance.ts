@@ -213,7 +213,7 @@ export const checkInMemberById = async (
     memberId,
     type: "attendance_checked",
     description: "출석 체크",
-    createdAt: dayRange.start,
+    createdAt: targetDate,
     metadata: {
       weeklyAttendance: memberMembership.membership.weeklyAttendance,
       attendanceCount: attendanceCount + 1,

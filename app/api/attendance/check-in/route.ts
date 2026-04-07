@@ -64,8 +64,9 @@ const getWeekRange = (baseDate = new Date()) => {
 
 const parseAttendanceDate = (rawDate?: string) => {
   const normalized = rawDate?.trim();
+  const now = new Date();
   if (!normalized) {
-    return new Date();
+    return now;
   }
 
   const matchedDateOnly = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -75,10 +76,10 @@ const parseAttendanceDate = (rawDate?: string) => {
       Number(year),
       Number(month) - 1,
       Number(day),
-      0,
-      0,
-      0,
-      0,
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+      now.getMilliseconds(),
     );
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
@@ -162,7 +163,6 @@ export const POST = async (request: Request) => {
       { status: 400, headers: corsHeaders },
     );
   }
-  attendanceDate.setHours(0, 0, 0, 0);
 
   const digitsOnly = rawPhone.replace(/\D/g, "");
   const formattedPhone =

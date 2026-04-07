@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 type AttendanceActivity = {
   createdAt: string;
+  attendanceTime: string;
 };
 
 type AttendanceMember = {
@@ -53,6 +54,19 @@ const formatDateLabel = (date: Date) =>
 
 const formatDayLabel = (date: Date) =>
   date.toLocaleDateString("ko-KR", { weekday: "short" });
+
+const formatAttendanceTime = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
 
 const formatMembershipDuration = (
   duration: number | null,
@@ -460,11 +474,14 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
               })}
             </div>
             {activeMembers.map((member) => {
-              const attendanceDates = new Set(
+              const attendanceTimes = new Map(
                 member.activities.map((activity) => {
                   const activityDate = new Date(activity.createdAt);
                   activityDate.setHours(0, 0, 0, 0);
-                  return formatDateKey(activityDate);
+                  return [
+                    formatDateKey(activityDate),
+                    activity.attendanceTime || formatAttendanceTime(activity.createdAt),
+                  ];
                 }),
               );
               const isSelected = selectedMemberId === member.id;
@@ -494,7 +511,8 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 >
                 {allDates.map((date, index) => {
                   const dateKey = formatDateKey(date);
-                  const hasAttendance = attendanceDates.has(dateKey);
+                  const attendanceTime = attendanceTimes.get(dateKey) ?? "";
+                  const hasAttendance = attendanceTime.length > 0;
                   const isToday = dateKey === todayKey;
                   return (
                     <div
@@ -524,7 +542,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                         }
                       }}
                     >
-                      {hasAttendance ? "✔︎" : "-"}
+                      {hasAttendance ? `✔︎ ${attendanceTime}` : "-"}
                     </div>
                   );
                 })}

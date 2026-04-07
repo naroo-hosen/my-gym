@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 type AttendanceActivity = {
   createdAt: string;
-  attendanceTime: string;
 };
 
 type AttendanceMember = {
@@ -65,6 +64,7 @@ const formatAttendanceTime = (value: string) => {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Asia/Seoul",
   });
 };
 
@@ -480,7 +480,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                   activityDate.setHours(0, 0, 0, 0);
                   return [
                     formatDateKey(activityDate),
-                    activity.attendanceTime || formatAttendanceTime(activity.createdAt),
+                    formatAttendanceTime(activity.createdAt),
                   ];
                 }),
               );

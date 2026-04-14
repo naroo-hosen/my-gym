@@ -532,17 +532,29 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       name: member.name,
       birthDate: member.birthDate ? member.birthDate.toISOString() : null,
       phone: member.phone,
+      gender: member.gender,
+      parentPhone: member.parentPhone,
+      memo: member.memo,
+      status: member.status,
+      membershipId: activeMembership?.membershipId ?? null,
       membershipDuration: activeMembership?.membership?.duration ?? null,
-        membershipDurationUnit: activeMembership?.membership
+      membershipDurationUnit: activeMembership?.membership
         ? ((activeMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH") as "DAY" | "MONTH")
         : null,
       membershipWeeklyAttendance:
         activeMembership?.membership?.weeklyAttendance ?? null,
+      membershipPrice: activeMembership?.membership?.price ?? null,
       membershipAssignedAt:
         activeMembership?.assignedAt.toISOString() ?? null,
+      membershipExpiresAt:
+        activeMembership?.expiresAt?.toISOString() ?? null,
+      membershipPausedAt:
+        activeMembership?.pausedAt?.toISOString() ?? null,
+      membershipTotalPausedMs: activeMembership?.totalPausedMs ?? 0,
       activities: member.activities.map((activity) => ({
         createdAt: activity.createdAt.toISOString(),
       })),
+      createdAt: member.createdAt.toISOString(),
     };
   });
   const serializedMemberships = memberships.map((membership) => ({

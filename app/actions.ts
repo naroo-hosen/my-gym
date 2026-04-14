@@ -407,6 +407,25 @@ export const permanentlyDeleteMember = async (formData: FormData) => {
   revalidatePath("/");
 };
 
+export const deleteMemberActivity = async (formData: FormData) => {
+  const activityId = Number(formData.get("activityId"));
+  const memberId = Number(formData.get("memberId"));
+
+  if (!activityId || !memberId) {
+    return { status: "invalid" as const };
+  }
+
+  await prisma.memberActivity.deleteMany({
+    where: {
+      id: activityId,
+      memberId,
+    },
+  });
+
+  revalidatePath("/");
+  return { status: "ok" as const };
+};
+
 export const pauseMemberMembership = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
   const pauseEndsAtValue = formData.get("pauseEndsAt")?.toString().trim();

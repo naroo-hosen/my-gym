@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   checkInMember,
   createMember,
+  deleteMemberActivity,
   deleteMember,
   extendMemberMembership,
   permanentlyDeleteMember,
@@ -347,6 +348,9 @@ const MemberPage = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
   const [historyPage, setHistoryPage] = useState(1);
+  const [pendingHistoryDeleteId, setPendingHistoryDeleteId] = useState<
+    number | null
+  >(null);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey | null;
     direction: "asc" | "desc";
@@ -620,6 +624,27 @@ const MemberPage = ({
       router.refresh();
     });
   };
+  const handleDeleteHistoryItem = (activityId: number) => {
+    if (!selectedMember) {
+      return;
+    }
+
+    const shouldDelete = window.confirm("이 변경 이력을 삭제할까요?");
+    if (!shouldDelete) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("activityId", String(activityId));
+    formData.append("memberId", String(selectedMember.id));
+
+    setPendingHistoryDeleteId(activityId);
+    startTransition(async () => {
+      await deleteMemberActivity(formData);
+      setPendingHistoryDeleteId(null);
+      router.refresh();
+    });
+  };
   const filteredTotalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
   const sortedMembers = useMemo(() => {
     if (!sortConfig.key) {
@@ -692,7 +717,14 @@ const MemberPage = ({
     }
     setHistoryTypeFilter("all");
     setHistoryPage(1);
+    setPendingHistoryDeleteId(null);
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (historyPage > historyTotalPages) {
+      setHistoryPage(historyTotalPages);
+    }
+  }, [historyPage, historyTotalPages]);
 
   useEffect(() => {
     if (editingField === "membershipId") {
@@ -2031,6 +2063,18 @@ const MemberPage = ({
                       <span className="history-item-meta">
                         {new Date(activity.createdAt).toLocaleString("ko-KR")}
                       </span>
+                      <div className="history-item-actions">
+                        <button
+                          className="button-danger button-small"
+                          type="button"
+                          onClick={() => handleDeleteHistoryItem(activity.id)}
+                          disabled={pendingHistoryDeleteId === activity.id}
+                        >
+                          {pendingHistoryDeleteId === activity.id
+                            ? "삭제 중..."
+                            : "삭제"}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

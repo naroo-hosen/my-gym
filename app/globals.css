@@ -1392,6 +1392,12 @@ button {
   color: #6b7280;
 }
 
+.history-item-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

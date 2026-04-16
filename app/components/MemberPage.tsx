@@ -8,6 +8,7 @@ import {
   deleteMemberActivity,
   deleteMember,
   extendMemberMembership,
+  forceExpireMemberMembership,
   permanentlyDeleteMember,
   pauseMemberMembership,
   restoreMember,
@@ -154,6 +155,8 @@ const getActivityTypeLabel = (type: string) => {
       return "일시정지 해제";
     case "membership_extended":
       return "만료일 연장";
+    case "membership_expired":
+      return "회원권 만료";
     case "member_deactivated":
       return "회원 중지";
     case "member_restored":
@@ -328,6 +331,9 @@ const MemberPage = ({
   const [pendingPauseMemberId, setPendingPauseMemberId] = useState<
     number | null
   >(null);
+  const [pendingForceExpireMemberId, setPendingForceExpireMemberId] = useState<
+    number | null
+  >(null);
   const [pendingMembershipAction, setPendingMembershipAction] = useState<{
     type: "assign" | "clear";
     membershipId: string;
@@ -405,6 +411,13 @@ const MemberPage = ({
         ? members.find((member) => member.id === pendingPauseMemberId) ?? null
         : null,
     [members, pendingPauseMemberId],
+  );
+  const pendingForceExpireMember = useMemo(
+    () =>
+      pendingForceExpireMemberId
+        ? members.find((member) => member.id === pendingForceExpireMemberId) ?? null
+        : null,
+    [members, pendingForceExpireMemberId],
   );
   const selectedMemberNumber = selectedMember?.id ?? null;
   const selectedMemberStatus = selectedMember
@@ -539,6 +552,12 @@ const MemberPage = ({
   const canPauseMembership = Boolean(
     selectedMember?.membershipId && selectedMember?.status !== "DELETE",
   );
+  const canForceExpireMembership = Boolean(
+    selectedMember?.membershipId &&
+      selectedMember?.status !== "DELETE" &&
+      selectedMembershipRemainingDays !== null &&
+      selectedMembershipRemainingDays >= 0,
+  );
   const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
   const historyTypes = useMemo(() => {
     if (!selectedMember) {
@@ -583,6 +602,13 @@ const MemberPage = ({
     }
 
     setPendingPauseMemberId(selectedMember.id);
+  };
+  const handleForceExpireClick = () => {
+    if (!selectedMember || !canForceExpireMembership) {
+      return;
+    }
+
+    setPendingForceExpireMemberId(selectedMember.id);
   };
   const handlePermanentDeleteClick = () => {
     if (!selectedMember || selectedMember.status !== "DELETE") {
@@ -1320,6 +1346,15 @@ const MemberPage = ({
                     {isMembershipPaused ? "일시정지 해제" : "일시정지"}
                   </button>
                 )}
+                {canForceExpireMembership && (
+                  <button
+                    className="button-danger"
+                    type="button"
+                    onClick={handleForceExpireClick}
+                  >
+                    강제 만료
+                  </button>
+                )}
                 <button
                   className={
                     selectedMember.status === "DELETE"
@@ -1876,6 +1911,38 @@ const MemberPage = ({
                 ) : null}
                 <button className="button-primary" type="submit">
                   확인
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingForceExpireMember && (
+        <div className="modal-overlay" role="presentation">
+          <div className="modal confirm-modal" role="dialog" aria-modal="true">
+            <p className="confirm-message">
+              현재 보유 중인 회원권을 즉시 만료 처리할까요? 이 작업은 회원권을 회복하지 않습니다.
+            </p>
+            <div className="panel-actions center">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingForceExpireMemberId(null)}
+              >
+                취소
+              </button>
+              <form
+                action={forceExpireMemberMembership}
+                onSubmit={() => setPendingForceExpireMemberId(null)}
+              >
+                <input
+                  type="hidden"
+                  name="memberId"
+                  value={pendingForceExpireMember.id}
+                />
+                <button className="button-danger" type="submit">
+                  강제 만료
                 </button>
               </form>
             </div>

@@ -55,6 +55,17 @@ const parseActivityMetadata = (metadata: string | null) => {
   }
 };
 
+const getLaterValidDate = (dates: Array<Date | null>) =>
+  dates.reduce<Date | null>((latest, current) => {
+    if (!current || Number.isNaN(current.getTime())) {
+      return latest;
+    }
+    if (!latest || current.getTime() > latest.getTime()) {
+      return current;
+    }
+    return latest;
+  }, null);
+
 const resolveCurrentMembershipExpiry = (
   memberMemberships: MarketingTargetMember["memberMemberships"],
 ) => {
@@ -101,6 +112,11 @@ const analyzeMarketingMember = (
       const durationUnitValue = metadata?.durationUnit;
       const assignedAt =
         typeof assignedAtValue === "string" ? new Date(assignedAtValue) : null;
+      const registeredAt = activity.createdAt;
+      const reRegistrationReferenceAt = getLaterValidDate([
+        assignedAt,
+        registeredAt,
+      ]);
       const duration =
         typeof durationValue === "number" ? durationValue : Number(durationValue);
       const durationUnit =
@@ -112,9 +128,8 @@ const analyzeMarketingMember = (
 
       if (
         resolvedExpiry &&
-        assignedAt &&
-        !Number.isNaN(assignedAt.getTime()) &&
-        assignedAt.getTime() > resolvedExpiry.getTime()
+        reRegistrationReferenceAt &&
+        reRegistrationReferenceAt.getTime() > resolvedExpiry.getTime()
       ) {
         expiredHistoryCount += 1;
         reRegisteredCount += 1;
@@ -643,7 +658,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         return null;
       }
 
-      if (analysis.lastKnownExpiry.getTime() >= today.getTime()) {
+      if (analysis.lastKnownExpiry.getTime() >= now.getTime()) {
         return null;
       }
 

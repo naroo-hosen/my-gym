@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type ExpiringMember = {
@@ -13,21 +13,14 @@ type ExpiringMember = {
   expiredHistoryCount?: number;
 };
 
-type ExpiringBucket = {
-  label: string;
-  days: number;
-  members: ExpiringMember[];
-};
-
 type MarketingPageProps = {
-  buckets: ExpiringBucket[];
+  expiringMembers: ExpiringMember[];
   expiredMembers: ExpiringMember[];
   reRegistrationRate: number;
   reRegisteredCount: number;
   expiredHistoryCount: number;
   currentlyExpiredCount: number;
   todayNewMembers: number;
-  totalMembersWithMembership: number;
 };
 
 const EXPIRED_MEMBERS_PAGE_SIZE = 10;
@@ -53,18 +46,35 @@ const getElapsedDays = (value: string) => {
   return diffDays > 0 ? `${diffDays}일` : "당일";
 };
 
+const getRemainingDays = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.floor(
+    (date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  if (diffDays === 0) {
+    return "당일";
+  }
+
+  return `${diffDays}일 전`;
+};
+
 const MarketingPage = ({
-  buckets,
+  expiringMembers,
   expiredMembers,
   reRegistrationRate,
   reRegisteredCount,
   expiredHistoryCount,
   currentlyExpiredCount,
   todayNewMembers,
-  totalMembersWithMembership,
 }: MarketingPageProps) => {
   const router = useRouter();
-  const baseCount = Math.max(1, totalMembersWithMembership);
   const [expiredPage, setExpiredPage] = useState(1);
   const expiredTotalPages = Math.max(
     1,
@@ -85,48 +95,46 @@ const MarketingPage = ({
         <div>
           <h2>마케팅</h2>
           <p className="marketing-subtitle">
-            만료 예정 회원에게 안내 메시지를 보낼 수 있도록 기간별로 정리했습니다.
+            만료 7일 전부터 당일까지의 회원을 한 번에 확인할 수 있습니다.
           </p>
         </div>
       </header>
-      <div className="marketing-grid">
-        {buckets.map((bucket) => (
-          <section className="panel marketing-panel" key={bucket.days}>
-            <div className="panel-header">
-              <h3>{bucket.label}</h3>
-              <span className="count">{bucket.members.length}명</span>
-            </div>
-            {bucket.members.length ? (
-              <div className="table-wrap">
-                <table className="member-table">
-                  <thead>
-                    <tr>
-                      <th>이름</th>
-                      <th>연락처</th>
-                      <th className="number">만료일</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bucket.members.map((member) => (
-                      <tr
-                        key={member.id}
-                        className="row"
-                        onClick={() => router.push(`/?memberId=${member.id}`)}
-                      >
-                        <td>{member.name}</td>
-                        <td>{member.phone}</td>
-                        <td className="number">{formatDate(member.expiresAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="empty">해당 없음</p>
-            )}
-          </section>
-        ))}
-      </div>
+      <section className="panel marketing-panel">
+        <div className="panel-header">
+          <h3>만료 7일 이내 회원</h3>
+          <span className="count">{expiringMembers.length}명</span>
+        </div>
+        {expiringMembers.length ? (
+          <div className="table-wrap">
+            <table className="member-table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>연락처</th>
+                  <th className="number">만료일</th>
+                  <th className="number">남은 기간</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiringMembers.map((member) => (
+                  <tr
+                    key={member.id}
+                    className="row"
+                    onClick={() => router.push(`/?memberId=${member.id}`)}
+                  >
+                    <td>{member.name}</td>
+                    <td>{member.phone}</td>
+                    <td className="number">{formatDate(member.expiresAt)}</td>
+                    <td className="number">{getRemainingDays(member.expiresAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty">해당 없음</p>
+        )}
+      </section>
       <section className="panel marketing-retention">
         <div className="panel-header">
           <h3>재등록률</h3>
@@ -160,40 +168,6 @@ const MarketingPage = ({
               오늘 새로 등록된 회원 수
             </span>
           </div>
-        </div>
-      </section>
-      <section className="panel marketing-insights">
-        <div className="panel-header">
-          <h3>만료 예정 분포</h3>
-          <span className="count">{totalMembersWithMembership}명 기준</span>
-        </div>
-        <div
-          className="marketing-chart"
-          style={{ "--max": baseCount } as CSSProperties}
-        >
-          {buckets.map((bucket) => {
-            const percentage = Math.round(
-              (bucket.members.length / baseCount) * 100,
-            );
-            return (
-              <div className="marketing-chart-item" key={bucket.days}>
-                <div className="marketing-chart-label">{bucket.label}</div>
-                <div className="marketing-chart-track">
-                  <div
-                    className="marketing-chart-bar"
-                    style={
-                      {
-                        "--value": bucket.members.length,
-                      } as CSSProperties
-                    }
-                  />
-                </div>
-                <div className="marketing-chart-value">
-                  {bucket.members.length}명 ({percentage}%)
-                </div>
-              </div>
-            );
-          })}
         </div>
       </section>
       <section className="panel marketing-expired">

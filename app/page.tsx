@@ -302,7 +302,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     attendanceMembers,
     marketingMembers,
     todayNewMembers,
-    totalMembersWithMembership,
     lockerSlots,
     lockerCandidates,
   ] =
@@ -432,16 +431,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
               createdAt: {
                 gte: todayStart,
                 lt: tomorrowStart,
-              },
-            },
-          })
-        : Promise.resolve(0),
-      isMarketingSection
-        ? prisma.member.count({
-            where: {
-              status: "ACTIVE",
-              memberMemberships: {
-                some: {},
               },
             },
           })
@@ -632,34 +621,18 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const marketingBuckets = [7, 3, 1, 0].map((days) => ({
-    days,
-    label: days === 0 ? "만료 당일" : `만료 ${days}일 전`,
-    members: [] as {
-      id: number;
-      name: string;
-      phone: string;
-      expiresAt: string;
-    }[],
-  }));
-
-  marketingTargets.forEach((member) => {
-    const expiresAt = new Date(member.expiresAt);
-    expiresAt.setHours(0, 0, 0, 0);
-    const diffDays = Math.round(
-      (expiresAt.getTime() - today.getTime()) / MS_PER_DAY,
-    );
-    const bucket = marketingBuckets.find((item) => item.days === diffDays);
-    if (bucket) {
-      bucket.members.push(member);
-    }
-  });
-
-  marketingBuckets.forEach((bucket) => {
-    bucket.members.sort(
+  const expiringMarketingMembers = marketingTargets
+    .filter((member) => {
+      const expiresAt = new Date(member.expiresAt);
+      expiresAt.setHours(0, 0, 0, 0);
+      const diffDays = Math.round(
+        (expiresAt.getTime() - today.getTime()) / MS_PER_DAY,
+      );
+      return diffDays >= 0 && diffDays <= 7;
+    })
+    .sort(
       (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
     );
-  });
   const expiredMarketingMembers = analyzedMarketingMembers
     .map(({ member, analysis }) => {
       if (
@@ -749,14 +722,13 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         <LockerPage lockers={serializedLockerSlots} members={serializedLockerMembers} />
       ) : section === "marketing" ? (
         <MarketingPage
-          buckets={marketingBuckets}
+          expiringMembers={expiringMarketingMembers}
           expiredMembers={expiredMarketingMembers}
           reRegistrationRate={reRegistrationRate}
           reRegisteredCount={reRegistrationSummary.reRegisteredCount}
           expiredHistoryCount={reRegistrationSummary.expiredHistoryCount}
           currentlyExpiredCount={reRegistrationSummary.currentlyExpiredCount}
           todayNewMembers={todayNewMembers}
-          totalMembersWithMembership={totalMembersWithMembership}
         />
       ) : section === "sales" ? (
         <SalesPage />

@@ -158,6 +158,11 @@ const section =
           </button>
         </div>
       </nav>
+      <div className="sidebar-tools">
+        <a className="backup-download" href="/api/backup/sqlite">
+          SQLite 백업 다운로드
+        </a>
+      </div>
     </aside>
   );
 };

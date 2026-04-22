@@ -126,6 +126,30 @@ p {
   padding: 8px 12px;
 }
 
+.sidebar-tools {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.backup-download {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(249, 115, 22, 0.16);
+  color: #fed7aa;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.backup-download:hover {
+  background: rgba(249, 115, 22, 0.24);
+  color: #ffedd5;
+}
+
 .content {
   display: flex;
   flex-direction: column;

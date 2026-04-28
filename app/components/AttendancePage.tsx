@@ -22,6 +22,11 @@ type AttendancePageProps = {
   members: AttendanceMember[];
 };
 
+type AttendanceSort = {
+  dateKey: string;
+  direction: "desc" | "asc";
+} | null;
+
 const buildWeekDates = (baseDate = new Date(), weekOffset = 0) => {
   const today = new Date(baseDate);
   today.setHours(0, 0, 0, 0);
@@ -67,6 +72,26 @@ const formatAttendanceTime = (value: string) => {
     timeZone: "Asia/Seoul",
   });
 };
+
+const getAttendanceTimeValueForDate = (
+  activities: AttendanceActivity[],
+  dateKey: string,
+) =>
+  activities.reduce<number | null>((latest, activity) => {
+    const activityDate = new Date(activity.createdAt);
+    if (Number.isNaN(activityDate.getTime())) {
+      return latest;
+    }
+    activityDate.setHours(0, 0, 0, 0);
+    if (formatDateKey(activityDate) !== dateKey) {
+      return latest;
+    }
+    const timeValue = new Date(activity.createdAt).getTime();
+    if (Number.isNaN(timeValue)) {
+      return latest;
+    }
+    return latest === null || timeValue > latest ? timeValue : latest;
+  }, null);
 
 const formatMembershipDuration = (
   duration: number | null,
@@ -114,6 +139,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const thisWeekStartRef = useRef<HTMLDivElement | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [attendanceSort, setAttendanceSort] = useState<AttendanceSort>(null);
   const visibleLabel =
     visibleDates.length > 0
       ? `${formatDateLabel(visibleDates[0])} ~ ${formatDateLabel(
@@ -223,6 +249,49 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
       latestAttendance,
     };
   }, [selectedMember, visibleDates, todayKey]);
+  const sortedMembers = useMemo(() => {
+    if (!attendanceSort) {
+      return activeMembers;
+    }
+
+    return [...activeMembers].sort((firstMember, secondMember) => {
+      const firstTime = getAttendanceTimeValueForDate(
+        firstMember.activities,
+        attendanceSort.dateKey,
+      );
+      const secondTime = getAttendanceTimeValueForDate(
+        secondMember.activities,
+        attendanceSort.dateKey,
+      );
+
+      if (firstTime === null && secondTime === null) {
+        return firstMember.name.localeCompare(secondMember.name, "ko-KR");
+      }
+      if (firstTime === null) {
+        return 1;
+      }
+      if (secondTime === null) {
+        return -1;
+      }
+
+      return attendanceSort.direction === "desc"
+        ? secondTime - firstTime
+        : firstTime - secondTime;
+    });
+  }, [activeMembers, attendanceSort]);
+
+  const handleAttendanceSortClick = (dateKey: string) => {
+    setAttendanceSort((prev) => {
+      if (prev?.dateKey !== dateKey) {
+        return { dateKey, direction: "desc" };
+      }
+
+      return {
+        dateKey,
+        direction: prev.direction === "desc" ? "asc" : "desc",
+      };
+    });
+  };
 
   const handleAttendanceCellClick = async (
     member: AttendanceMember,
@@ -400,7 +469,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
             <div className="attendance-cell">연락처</div>
             <div className="attendance-cell">회원권</div>
           </div>
-          {activeMembers.map((member) => {
+          {sortedMembers.map((member) => {
             const isSelected = selectedMemberId === member.id;
             return (
               <div
@@ -450,6 +519,7 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
               {allDates.map((date, index) => {
                 const dateKey = formatDateKey(date);
                 const isToday = dateKey === todayKey;
+                const isSorted = attendanceSort?.dateKey === dateKey;
                 return (
                   <div
                     key={dateKey}
@@ -458,7 +528,19 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                     }`}
                     ref={index === 0 ? thisWeekStartRef : undefined}
                   >
-                    <div className="attendance-date-line">
+                    <button
+                      type="button"
+                      className={`attendance-date-sort${
+                        isSorted ? " is-active" : ""
+                      }`}
+                      onClick={() => handleAttendanceSortClick(dateKey)}
+                      aria-pressed={isSorted}
+                      aria-label={`${formatDateLabel(date)} 출석 시각 ${
+                        isSorted && attendanceSort.direction === "asc"
+                          ? "빠른 순"
+                          : "늦은 순"
+                      } 정렬`}
+                    >
                       <span className="attendance-date">
                         {formatDateLabel(date)}
                       </span>
@@ -468,12 +550,19 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                       <span className="attendance-count">
                         {attendanceByDate.get(dateKey) ?? 0}명
                       </span>
-                    </div>
+                      <span className="attendance-sort-arrow" aria-hidden="true">
+                        {isSorted
+                          ? attendanceSort.direction === "asc"
+                            ? "↑"
+                            : "↓"
+                          : "↕"}
+                      </span>
+                    </button>
                   </div>
                 );
               })}
             </div>
-            {activeMembers.map((member) => {
+            {sortedMembers.map((member) => {
               const attendanceTimes = new Map(
                 member.activities.map((activity) => {
                   const activityDate = new Date(activity.createdAt);

@@ -867,11 +867,29 @@ section {
   font-weight: 700;
 }
 
-.attendance-date-line {
+.attendance-date-sort {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
+  text-align: left;
+}
+
+.attendance-date-sort:hover {
+  color: #312e81;
+}
+
+.attendance-date-sort:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
 }
 
 .attendance-day {
@@ -884,6 +902,16 @@ section {
   font-size: 11px;
   color: #4f46e5;
   font-weight: 700;
+}
+
+.attendance-sort-arrow {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.attendance-date-sort.is-active .attendance-sort-arrow {
+  color: #4f46e5;
 }
 
 .attendance-cell.is-today {

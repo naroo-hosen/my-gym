@@ -11,6 +11,7 @@ type AttendanceMember = {
   id: number;
   name: string;
   phone: string;
+  memo: string | null;
   membershipDuration: number | null;
   membershipDurationUnit: "MONTH" | "DAY" | null;
   membershipWeeklyAttendance: number | null;
@@ -642,16 +643,35 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         </div>
       </div>
 
-      <div className={`panel detail-panel${selectedMember ? " is-open" : ""}`}>
-        {selectedMember && (
-          <>
+      {selectedMember ? (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={() => setSelectedMemberId(null)}
+        >
+          <div
+            className="modal attendance-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="attendance-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="panel-header">
               <div>
-                <h3 className="section-title">회원 상세</h3>
+                <h3 id="attendance-detail-title" className="section-title">
+                  회원 상세
+                </h3>
                 <p className="section-subtitle">
                   선택한 회원의 출석 정보를 확인합니다.
                 </p>
               </div>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setSelectedMemberId(null)}
+              >
+                닫기
+              </button>
             </div>
             <div className="detail-grid">
               <div className="detail-item">
@@ -700,10 +720,14 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
                 <span className="detail-label">최근 2주 출석 횟수</span>
                 <strong>{selectedMember.activities.length}회</strong>
               </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">메모</span>
+                <strong>{selectedMember.memo || "-"}</strong>
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 };

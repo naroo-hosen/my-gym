@@ -15,6 +15,18 @@ type SalesEntry = {
 
 type SalesViewType = "all" | SalesEntry["type"];
 
+type SalesCalendarDay = {
+  date: Date;
+  dateKey: string;
+  isCurrentMonth: boolean;
+};
+
+type PaymentMethodSummary = {
+  paymentMethod: string;
+  income: number;
+  expense: number;
+};
+
 const PAYMENT_METHOD_OPTIONS = [
   "계좌이체",
   "카드",
@@ -41,6 +53,46 @@ const createDefaultRange = () => {
     end: getInputDate(end),
   };
 };
+
+const getMonthRange = (date: Date) => {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return {
+    start: getInputDate(start),
+    end: getInputDate(end),
+  };
+};
+
+const getMonthInputValue = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+const toMonthDate = (value: string) => {
+  const parsed = new Date(`${value}-01T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+};
+
+const buildCalendarDays = (monthValue: string): SalesCalendarDay[] => {
+  const monthDate = toMonthDate(monthValue);
+  const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const calendarStart = new Date(monthStart);
+  calendarStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(calendarStart);
+    date.setDate(calendarStart.getDate() + index);
+    return {
+      date,
+      dateKey: getInputDate(date),
+      isCurrentMonth: date.getMonth() === monthDate.getMonth(),
+    };
+  });
+};
+
+const formatMonthLabel = (monthValue: string) =>
+  toMonthDate(monthValue).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+  });
 
 const toDate = (value: string, endOfDay = false) => {
   if (!value) return null;
@@ -77,6 +129,12 @@ const SalesPage = () => {
   const [installmentMonths, setInstallmentMonths] = useState("0");
   const [startDate, setStartDate] = useState(defaultRange.start);
   const [endDate, setEndDate] = useState(defaultRange.end);
+  const [calendarMonth, setCalendarMonth] = useState(
+    getMonthInputValue(new Date()),
+  );
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(
+    getInputDate(new Date()),
+  );
   const [query, setQuery] = useState("");
   const [viewType, setViewType] = useState<SalesViewType>("all");
 
@@ -170,6 +228,72 @@ const SalesPage = () => {
   }, [filteredEntries]);
 
   const netTotal = stats.income - stats.expense;
+  const calendarDays = useMemo(
+    () => buildCalendarDays(calendarMonth),
+    [calendarMonth],
+  );
+  const dailySales = useMemo(() => {
+    return filteredEntries.reduce((map, entry) => {
+      const current = map.get(entry.date) ?? { income: 0, expense: 0 };
+      if (entry.type === "income") {
+        current.income += entry.amount;
+      } else {
+        current.expense += entry.amount;
+      }
+      map.set(entry.date, current);
+      return map;
+    }, new Map<string, { income: number; expense: number }>());
+  }, [filteredEntries]);
+  const selectedDatePaymentSummary = useMemo(() => {
+    const summary = filteredEntries
+      .filter((entry) => entry.date === selectedCalendarDate)
+      .reduce((map, entry) => {
+        const key = entry.paymentMethod || "미지정";
+        const current = map.get(key) ?? {
+          paymentMethod: key,
+          income: 0,
+          expense: 0,
+        };
+        if (entry.type === "income") {
+          current.income += entry.amount;
+        } else {
+          current.expense += entry.amount;
+        }
+        map.set(key, current);
+        return map;
+      }, new Map<string, PaymentMethodSummary>());
+
+    return Array.from(summary.values()).sort((first, second) => {
+      const firstTotal = first.income - first.expense;
+      const secondTotal = second.income - second.expense;
+      return secondTotal - firstTotal;
+    });
+  }, [filteredEntries, selectedCalendarDate]);
+  const selectedDateSummaryTotal = useMemo(
+    () =>
+      selectedDatePaymentSummary.reduce(
+        (total, item) => ({
+          income: total.income + item.income,
+          expense: total.expense + item.expense,
+        }),
+        { income: 0, expense: 0 },
+      ),
+    [selectedDatePaymentSummary],
+  );
+
+  const handleCalendarMonthChange = (nextMonth: string) => {
+    const monthDate = toMonthDate(nextMonth);
+    const nextRange = getMonthRange(monthDate);
+    setCalendarMonth(getMonthInputValue(monthDate));
+    setStartDate(nextRange.start);
+    setEndDate(nextRange.end);
+  };
+
+  const moveCalendarMonth = (offset: number) => {
+    const monthDate = toMonthDate(calendarMonth);
+    monthDate.setMonth(monthDate.getMonth() + offset);
+    handleCalendarMonthChange(getMonthInputValue(monthDate));
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -292,6 +416,7 @@ const SalesPage = () => {
       </header>
 
       <div className="sales-grid">
+        <div className="sales-entry-column">
         <section className="panel">
           <div className="panel-header">
             <h3>매출 항목 입력</h3>
@@ -431,6 +556,117 @@ const SalesPage = () => {
 
         <section className="panel">
           <div className="panel-header">
+            <h3>일별 순매출</h3>
+            <span className="count">{formatMonthLabel(calendarMonth)}</span>
+          </div>
+          <div className="sales-calendar">
+            <div className="sales-calendar-header">
+              <button
+                type="button"
+                className="button-secondary button-small"
+                onClick={() => moveCalendarMonth(-1)}
+              >
+                이전달
+              </button>
+              <strong>{formatMonthLabel(calendarMonth)}</strong>
+              <button
+                type="button"
+                className="button-secondary button-small"
+                onClick={() => moveCalendarMonth(1)}
+              >
+                다음달
+              </button>
+            </div>
+            <div className="sales-calendar-weekdays" aria-hidden="true">
+              {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="sales-calendar-grid">
+              {calendarDays.map((day) => {
+                const daily = dailySales.get(day.dateKey);
+                const income = daily?.income ?? 0;
+                const expense = daily?.expense ?? 0;
+                const net = income - expense;
+
+                return (
+                  <button
+                    type="button"
+                    key={day.dateKey}
+                    className={`sales-calendar-day${
+                      day.isCurrentMonth ? "" : " is-muted"
+                    }${income || expense ? " has-sales" : ""}${
+                      selectedCalendarDate === day.dateKey ? " is-selected" : ""
+                    }`}
+                    onClick={() => setSelectedCalendarDate(day.dateKey)}
+                  >
+                    <span className="sales-calendar-date">
+                      {day.date.getDate()}
+                    </span>
+                    {income || expense ? (
+                      <div className="sales-calendar-amounts">
+                        <strong className={net >= 0 ? "income" : "expense"}>
+                          {net >= 0 ? "+" : "-"}
+                          {formatCurrency(Math.abs(net))}원
+                        </strong>
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="sales-calendar-detail">
+              <div className="sales-calendar-detail-header">
+                <strong>{selectedCalendarDate}</strong>
+                <span>
+                  순매출{" "}
+                  {selectedDateSummaryTotal.income >=
+                  selectedDateSummaryTotal.expense
+                    ? "+"
+                    : "-"}
+                  {formatCurrency(
+                    Math.abs(
+                      selectedDateSummaryTotal.income -
+                        selectedDateSummaryTotal.expense,
+                    ),
+                  )}
+                  원
+                </span>
+              </div>
+              {selectedDatePaymentSummary.length ? (
+                <div className="sales-payment-summary-list">
+                  {selectedDatePaymentSummary.map((item) => {
+                    const net = item.income - item.expense;
+                    return (
+                      <div
+                        key={item.paymentMethod}
+                        className="sales-payment-summary-item"
+                      >
+                        <span>{item.paymentMethod}</span>
+                        <strong className={net >= 0 ? "income" : "expense"}>
+                          {net >= 0 ? "+" : "-"}
+                          {formatCurrency(Math.abs(net))}원
+                        </strong>
+                        <small>
+                          수입 {formatCurrency(item.income)}원 · 지출{" "}
+                          {formatCurrency(item.expense)}원
+                        </small>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="detail-empty">
+                  선택한 날짜에 등록된 매출 항목이 없습니다.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+        </div>
+
+        <section className="panel">
+          <div className="panel-header">
             <h3>매출 조회</h3>
             <span className="count">
               {isLoading ? "불러오는 중..." : `${filteredEntries.length}건`}
@@ -476,7 +712,12 @@ const SalesPage = () => {
                 id="sales-start"
                 type="date"
                 value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
+                onChange={(event) => {
+                  setStartDate(event.target.value);
+                  if (event.target.value) {
+                    setCalendarMonth(event.target.value.slice(0, 7));
+                  }
+                }}
               />
             </div>
             <div>

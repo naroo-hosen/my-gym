@@ -296,6 +296,11 @@ p {
   align-items: start;
 }
 
+.sales-entry-column {
+  display: grid;
+  gap: 24px;
+}
+
 .sales-form {
   display: grid;
   gap: 16px;
@@ -378,6 +383,201 @@ p {
 
 .sales-summary-item .expense {
   color: #b91c1c;
+}
+
+.sales-calendar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.sales-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sales-calendar-header strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.sales-calendar-weekdays,
+.sales-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.sales-calendar-weekdays {
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.sales-calendar-weekdays span {
+  padding: 8px 6px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sales-calendar-grid {
+  border: 1px solid #e5e7eb;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.sales-calendar-day {
+  border-top: none;
+  border-left: none;
+  min-width: 0;
+  min-height: 86px;
+  padding: 8px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #ffffff;
+  border-radius: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sales-calendar-day:nth-child(7n) {
+  border-right: none;
+}
+
+.sales-calendar-day:nth-last-child(-n + 7) {
+  border-bottom: none;
+}
+
+.sales-calendar-day.is-muted {
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+.sales-calendar-day.has-sales {
+  background: #fff7ed;
+}
+
+.sales-calendar-day:hover {
+  background: #eef2ff;
+}
+
+.sales-calendar-day:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
+}
+
+.sales-calendar-day.is-selected {
+  background: #e0e7ff;
+  box-shadow: inset 0 0 0 2px #4f46e5;
+}
+
+.sales-calendar-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.sales-calendar-amounts {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sales-calendar-amounts strong {
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.sales-calendar-amounts .income {
+  color: #15803d;
+}
+
+.sales-calendar-amounts .expense {
+  color: #b91c1c;
+}
+
+.sales-calendar-amounts span {
+  color: #b91c1c;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.sales-calendar-detail {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.sales-calendar-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sales-calendar-detail-header strong {
+  color: #111827;
+}
+
+.sales-calendar-detail-header span {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.sales-payment-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
+.sales-payment-summary-item {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) auto;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.sales-payment-summary-item span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.sales-payment-summary-item strong {
+  font-size: 13px;
+  text-align: right;
+}
+
+.sales-payment-summary-item .income {
+  color: #15803d;
+}
+
+.sales-payment-summary-item .expense {
+  color: #b91c1c;
+}
+
+.sales-payment-summary-item small {
+  grid-column: 1 / -1;
+  color: #6b7280;
+  font-size: 11px;
 }
 
 .sales-type {
@@ -1467,6 +1667,12 @@ button {
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+}
+
+.attendance-detail-modal {
+  width: min(760px, 100%);
+  max-height: 82vh;
+  overflow: auto;
 }
 
 .cards {

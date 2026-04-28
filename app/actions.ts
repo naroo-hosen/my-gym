@@ -457,6 +457,7 @@ export const deleteMemberActivity = async (formData: FormData) => {
 export const pauseMemberMembership = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
   const pauseEndsAtValue = formData.get("pauseEndsAt")?.toString().trim();
+  const pauseReason = formData.get("pauseReason")?.toString().trim();
 
   if (!memberId) {
     return;
@@ -486,7 +487,16 @@ export const pauseMemberMembership = async (formData: FormData) => {
   await createMemberActivity(prisma, {
     memberId,
     type: "membership_paused",
-    description: "회원권 일시정지",
+    description: pauseReason
+      ? `회원권 일시정지 (${pauseReason})`
+      : "회원권 일시정지",
+    metadata:
+      pauseReason || pauseEndsAt
+        ? {
+            ...(pauseReason ? { reason: pauseReason } : {}),
+            ...(pauseEndsAt ? { pauseEndsAt: pauseEndsAt.toISOString() } : {}),
+          }
+        : undefined,
   });
 
   revalidatePath("/");

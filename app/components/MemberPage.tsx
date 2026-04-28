@@ -172,6 +172,24 @@ const getActivityTypeLabel = (type: string) => {
   }
 };
 
+const parseActivityMetadata = (metadata: string | null) => {
+  if (!metadata) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(metadata) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const getPauseReason = (activity: MemberActivity) => {
+  const metadata = parseActivityMetadata(activity.metadata);
+  const reason = metadata?.reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : null;
+};
+
 const getInputDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -559,6 +577,25 @@ const MemberPage = ({
       selectedMembershipRemainingDays >= 0,
   );
   const isMembershipPaused = Boolean(selectedMember?.membershipPausedAt);
+  const selectedPauseReason = useMemo(() => {
+    if (!selectedMember?.membershipPausedAt) {
+      return null;
+    }
+
+    const latestPauseActivity = selectedMember.activities
+      .filter((activity) => activity.type === "membership_paused")
+      .reduce<MemberActivity | null>((latest, activity) => {
+        if (!latest) {
+          return activity;
+        }
+
+        return new Date(activity.createdAt) > new Date(latest.createdAt)
+          ? activity
+          : latest;
+      }, null);
+
+    return latestPauseActivity ? getPauseReason(latestPauseActivity) : null;
+  }, [selectedMember]);
   const historyTypes = useMemo(() => {
     if (!selectedMember) {
       return [];
@@ -1800,6 +1837,10 @@ const MemberPage = ({
                     : "-"}
                 </strong>
               </div>
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">일시정지 사유</span>
+                <strong>{selectedPauseReason ?? "-"}</strong>
+              </div>
             </div>
             <div className="detail-memo">
               <span className="detail-label">메모</span>
@@ -1904,10 +1945,20 @@ const MemberPage = ({
                   value={pendingPauseMember.id}
                 />
                 {!pendingPauseMember.membershipPausedAt ? (
-                  <label className="modal-field">
-                    <span>일시정지 종료일(선택)</span>
-                    <input type="date" name="pauseEndsAt" />
-                  </label>
+                  <>
+                    <label className="modal-field">
+                      <span>일시정지 종료일(선택)</span>
+                      <input type="date" name="pauseEndsAt" />
+                    </label>
+                    <label className="modal-field">
+                      <span>일시정지 사유(선택)</span>
+                      <textarea
+                        name="pauseReason"
+                        rows={3}
+                        placeholder="예: 부상, 출장, 개인 사정"
+                      />
+                    </label>
+                  </>
                 ) : null}
                 <button className="button-primary" type="submit">
                   확인

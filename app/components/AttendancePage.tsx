@@ -10,6 +10,7 @@ type AttendanceActivity = {
 type AttendanceMember = {
   id: number;
   name: string;
+  birthDate: string | null;
   phone: string;
   memo: string | null;
   membershipDuration: number | null;
@@ -681,6 +682,10 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
               <div className="detail-item">
                 <span className="detail-label">연락처</span>
                 <strong>{selectedMember.phone}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">생년월일</span>
+                <strong>{formatDateValue(selectedMember.birthDate)}</strong>
               </div>
               <div className="detail-item">
                 <span className="detail-label">회원권</span>

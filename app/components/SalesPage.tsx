@@ -587,7 +587,6 @@ const SalesPage = () => {
                 const daily = dailySales.get(day.dateKey);
                 const income = daily?.income ?? 0;
                 const expense = daily?.expense ?? 0;
-                const net = income - expense;
 
                 return (
                   <button
@@ -605,10 +604,16 @@ const SalesPage = () => {
                     </span>
                     {income || expense ? (
                       <div className="sales-calendar-amounts">
-                        <strong className={net >= 0 ? "income" : "expense"}>
-                          {net >= 0 ? "+" : "-"}
-                          {formatCurrency(Math.abs(net))}원
-                        </strong>
+                        {income ? (
+                          <strong className="income">
+                            +{formatCurrency(income)}원
+                          </strong>
+                        ) : null}
+                        {expense ? (
+                          <strong className="expense">
+                            -{formatCurrency(expense)}원
+                          </strong>
+                        ) : null}
                       </div>
                     ) : null}
                   </button>

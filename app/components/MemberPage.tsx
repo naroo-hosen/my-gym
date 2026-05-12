@@ -1258,6 +1258,7 @@ const MemberPage = ({
                   <th>상태</th>
                   {renderSortableHeader("시작일", "assignedAt")}
                   {renderSortableHeader("만료일", "expiresAt")}
+                  <th>정지일</th>
                   <th>남은 기간</th>
                 </tr>
               </thead>
@@ -1280,6 +1281,11 @@ const MemberPage = ({
                     member.membershipPausedAt || !resolvedExpiryDate
                       ? "-"
                       : resolvedExpiryDate.toLocaleDateString("ko-KR");
+                  const pauseEndsAtLabel = member.membershipPauseEndsAt
+                    ? new Date(member.membershipPauseEndsAt).toLocaleDateString(
+                        "ko-KR",
+                      )
+                    : "-";
                   const remainingDays = getRemainingDays(
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
@@ -1340,6 +1346,7 @@ const MemberPage = ({
                           : "-"}
                       </td>
                       <td>{expiresAtLabel}</td>
+                      <td>{pauseEndsAtLabel}</td>
                       <td>{formatRemainingDaysLabel(remainingDays)}</td>
                     </tr>
                   );

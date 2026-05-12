@@ -18,6 +18,11 @@ type MarketingTargetMember = {
   id: number;
   name: string;
   phone: string;
+  birthDate: Date | null;
+  gender: string | null;
+  parentPhone: string | null;
+  memo: string | null;
+  createdAt: Date;
   memberMemberships: {
     assignedAt: Date;
     expiresAt: Date | null;
@@ -624,13 +629,28 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         id: member.id,
         name: member.name,
         phone: member.phone,
+        birthDate: member.birthDate?.toISOString().slice(0, 10) ?? null,
+        gender: member.gender,
+        parentPhone: member.parentPhone,
+        memo: member.memo,
+        createdAt: member.createdAt.toISOString(),
         expiresAt: resolvedExpiry.toISOString(),
       };
     })
     .filter(
       (
         member,
-      ): member is { id: number; name: string; phone: string; expiresAt: string } =>
+      ): member is {
+        id: number;
+        name: string;
+        phone: string;
+        birthDate: string | null;
+        gender: string | null;
+        parentPhone: string | null;
+        memo: string | null;
+        createdAt: string;
+        expiresAt: string;
+      } =>
         member !== null,
     );
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -673,6 +693,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         id: member.id,
         name: member.name,
         phone: member.phone,
+        birthDate: member.birthDate?.toISOString().slice(0, 10) ?? null,
+        gender: member.gender,
+        parentPhone: member.parentPhone,
+        memo: member.memo,
+        createdAt: member.createdAt.toISOString(),
         expiresAt: analysis.lastKnownExpiry.toISOString(),
         reRegistrationRate,
         reRegisteredCount: analysis.reRegisteredCount,
@@ -686,6 +711,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         id: number;
         name: string;
         phone: string;
+        birthDate: string | null;
+        gender: string | null;
+        parentPhone: string | null;
+        memo: string | null;
+        createdAt: string;
         expiresAt: string;
         reRegistrationRate: number;
         reRegisteredCount: number;

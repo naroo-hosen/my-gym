@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type ExpiringMember = {
   id: number;
   name: string;
   phone: string;
+  birthDate: string | null;
+  gender: string | null;
+  parentPhone: string | null;
+  memo: string | null;
+  createdAt: string;
   expiresAt: string;
   reRegistrationRate?: number;
   reRegisteredCount?: number;
@@ -21,6 +25,10 @@ type MarketingPageProps = {
   expiredHistoryCount: number;
   currentlyExpiredCount: number;
   todayNewMembers: number;
+};
+
+type SelectedMarketingMember = ExpiringMember & {
+  listType: "expiring" | "expired";
 };
 
 const EXPIRED_MEMBERS_PAGE_SIZE = 10;
@@ -74,8 +82,9 @@ const MarketingPage = ({
   currentlyExpiredCount,
   todayNewMembers,
 }: MarketingPageProps) => {
-  const router = useRouter();
   const [expiredPage, setExpiredPage] = useState(1);
+  const [selectedMember, setSelectedMember] =
+    useState<SelectedMarketingMember | null>(null);
   const expiredTotalPages = Math.max(
     1,
     Math.ceil(expiredMembers.length / EXPIRED_MEMBERS_PAGE_SIZE),
@@ -88,6 +97,21 @@ const MarketingPage = ({
   useEffect(() => {
     setExpiredPage((current) => Math.min(current, expiredTotalPages));
   }, [expiredTotalPages]);
+
+  useEffect(() => {
+    if (!selectedMember) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedMember(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedMember]);
 
   return (
     <section className="marketing">
@@ -120,7 +144,9 @@ const MarketingPage = ({
                   <tr
                     key={member.id}
                     className="row"
-                    onClick={() => router.push(`/?memberId=${member.id}`)}
+                    onClick={() =>
+                      setSelectedMember({ ...member, listType: "expiring" })
+                    }
                   >
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
@@ -215,7 +241,9 @@ const MarketingPage = ({
                   <tr
                     key={member.id}
                     className="row"
-                    onClick={() => router.push(`/?memberId=${member.id}`)}
+                    onClick={() =>
+                      setSelectedMember({ ...member, listType: "expired" })
+                    }
                   >
                     <td>{member.name}</td>
                     <td>{member.phone}</td>
@@ -234,6 +262,103 @@ const MarketingPage = ({
           <p className="empty">해당 없음</p>
         )}
       </section>
+      {selectedMember ? (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={() => setSelectedMember(null)}
+        >
+          <div
+            className="modal attendance-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="marketing-member-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-header">
+              <div>
+                <h3 id="marketing-member-detail-title" className="section-title">
+                  회원 정보
+                </h3>
+                <p className="section-subtitle">
+                  {selectedMember.listType === "expiring"
+                    ? "만료 예정 회원 정보입니다."
+                    : "만료 후 미재등록 회원 정보입니다."}
+                </p>
+              </div>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setSelectedMember(null)}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="detail-grid">
+              <div className="detail-item">
+                <span className="detail-label">회원번호</span>
+                <strong>{selectedMember.id}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">이름</span>
+                <strong>{selectedMember.name}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">연락처</span>
+                <strong>{selectedMember.phone}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">생년월일</span>
+                <strong>
+                  {selectedMember.birthDate
+                    ? formatDate(selectedMember.birthDate)
+                    : "-"}
+                </strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">성별</span>
+                <strong>{selectedMember.gender || "-"}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">부모님 연락처</span>
+                <strong>{selectedMember.parentPhone || "-"}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">등록일</span>
+                <strong>{formatDate(selectedMember.createdAt)}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">만료일</span>
+                <strong>{formatDate(selectedMember.expiresAt)}</strong>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  {selectedMember.listType === "expiring" ? "남은 기간" : "경과"}
+                </span>
+                <strong>
+                  {selectedMember.listType === "expiring"
+                    ? getRemainingDays(selectedMember.expiresAt)
+                    : getElapsedDays(selectedMember.expiresAt)}
+                </strong>
+              </div>
+              {selectedMember.listType === "expired" ? (
+                <div className="detail-item">
+                  <span className="detail-label">재등록률</span>
+                  <strong>
+                    {selectedMember.reRegistrationRate ?? 0}% (
+                    {selectedMember.reRegisteredCount ?? 0}/
+                    {selectedMember.expiredHistoryCount ?? 0})
+                  </strong>
+                </div>
+              ) : null}
+              <div className="detail-item detail-item--wide">
+                <span className="detail-label">메모</span>
+                <strong>{selectedMember.memo || "-"}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 };

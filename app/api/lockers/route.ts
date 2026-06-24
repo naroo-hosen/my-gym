@@ -11,7 +11,30 @@ type LockerSlotResponse = {
   expiresAt: string | null;
 };
 
-const MAX_LOCKERS = 66;
+type LockerSectionConfig = {
+  key: string;
+  start: number;
+  count: number;
+};
+
+const LOCKER_SECTIONS: LockerSectionConfig[] = [
+  { key: "A", start: 1, count: 48 },
+  { key: "B", start: 49, count: 18 },
+  { key: "C", start: 67, count: 40 },
+];
+
+const MAX_LOCKERS = LOCKER_SECTIONS.reduce(
+  (total, section) => total + section.count,
+  0,
+);
+
+const getLockerSection = (lockerNumber: number) => {
+  const section = LOCKER_SECTIONS.find(
+    (slot) =>
+      lockerNumber >= slot.start && lockerNumber < slot.start + slot.count,
+  );
+  return section ?? null;
+};
 
 const toDateInputValue = (value: Date | null) => {
   if (!value) {
@@ -68,7 +91,7 @@ export const GET = async () => {
     (_, index) => {
       const lockerNumber = index + 1;
       const locker = assigned.get(lockerNumber);
-      const section = lockerNumber <= 48 ? "A" : "B";
+      const section = getLockerSection(lockerNumber)?.key ?? "A";
 
       if (!locker) {
         return {
@@ -111,7 +134,7 @@ export const POST = async (request: Request) => {
   const memberId = Number(body?.memberId);
   const assignedAt = parseDateInput(body?.startDate?.toString());
   const expiresAt = parseDateInput(body?.endDate?.toString());
-  const section = lockerNumber >= 49 ? "B" : "A";
+  const section = getLockerSection(lockerNumber)?.key ?? null;
 
   if (!lockerNumber || lockerNumber < 1 || lockerNumber > MAX_LOCKERS) {
     return NextResponse.json(
@@ -153,15 +176,15 @@ export const POST = async (request: Request) => {
       where: {
         lockerNumber,
       },
-    create: {
+      create: {
         lockerNumber,
-        section,
+        section: section ?? "C",
         memberId,
         assignedAt,
         expiresAt,
       },
       update: {
-        section,
+        section: section ?? "C",
         memberId,
         assignedAt,
         expiresAt,
@@ -183,6 +206,7 @@ export const POST = async (request: Request) => {
 export const DELETE = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const lockerNumber = Number(searchParams.get("lockerNumber"));
+  const section = getLockerSection(lockerNumber)?.key ?? null;
 
   if (!lockerNumber || lockerNumber < 1 || lockerNumber > MAX_LOCKERS) {
     return NextResponse.json(
@@ -195,7 +219,7 @@ export const DELETE = async (request: Request) => {
     where: { lockerNumber },
     create: {
       lockerNumber,
-      section: lockerNumber >= 49 ? "B" : "A",
+      section: section ?? "C",
       assignedAt: null,
       expiresAt: null,
     },

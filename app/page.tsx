@@ -587,7 +587,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const lockerSlotMap = new Map(
     lockerSlots.map((lockerSlot) => [lockerSlot.lockerNumber, lockerSlot]),
   );
-  const serializedLockerSlots = Array.from({ length: 66 }, (_, index) => {
+  const serializedLockerSlots = Array.from({ length: 106 }, (_, index) => {
     const lockerNumber = index + 1;
     const lockerSlot = lockerSlotMap.get(lockerNumber);
     if (!lockerSlot) {

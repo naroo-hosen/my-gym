@@ -71,6 +71,14 @@ const normalize = (value: string) => value.trim().toLowerCase();
 const lockerSections = [
   { key: "main", title: "보관함 A", start: 1, count: 48, columns: 16 },
   { key: "small", title: "보관함 B", start: 49, count: 18, columns: 3 },
+  {
+    key: "c",
+    title: "보관함 C",
+    start: 67,
+    count: 40,
+    columns: 12,
+    layout: "c",
+  },
 ] as const;
 
 type LockerSection = {
@@ -79,24 +87,73 @@ type LockerSection = {
   start: number;
   count: number;
   columns: number;
+  layout?: "c";
 };
+
+const getSectionByLockerNumber = (lockerNumber: number) =>
+  lockerSections.find((section) => {
+    const sectionEnd = section.start + section.count;
+    return lockerNumber >= section.start && lockerNumber < sectionEnd;
+  }) ?? null;
 
 const getSlotLabel = (slot: LockerSlot, section: LockerSection) => {
   if (section.key === "small") {
     return `B-${slot.lockerNumber - section.start + 1}`;
   }
+  if (section.key === "c") {
+    return `C-${slot.lockerNumber - section.start + 1}`;
+  }
 
   return `${slot.lockerNumber}`;
 };
 
-const getSlotDisplayLabel = (lockerNumber: number) =>
-  lockerNumber > 48 ? `B-${lockerNumber - 48}` : `${lockerNumber}`;
+const getSlotDisplayLabel = (lockerNumber: number) => {
+  const section = getSectionByLockerNumber(lockerNumber);
+
+  if (!section) {
+    return `${lockerNumber}`;
+  }
+  if (section.key === "small") {
+    return `B-${lockerNumber - section.start + 1}`;
+  }
+  if (section.key === "c") {
+    return `C-${lockerNumber - section.start + 1}`;
+  }
+  return `${lockerNumber}`;
+};
+
+const getLockerGridStyle = (slot: LockerSlot, section: LockerSection) => {
+  if (section.key !== "c") {
+    return undefined;
+  }
+
+  const localIndex = slot.lockerNumber - section.start;
+  if (localIndex < 0 || localIndex >= section.count) {
+    return undefined;
+  }
+
+  if (localIndex < 4) {
+    const startColumn = localIndex * 3 + 1;
+    return {
+      gridRow: "1",
+      gridColumn: `${startColumn} / span 3`,
+      aspectRatio: "3 / 1",
+    };
+  }
+
+  const bodyIndex = localIndex - 4;
+  return {
+    gridRow: `${Math.floor(bodyIndex / 12) + 2}`,
+    gridColumn: `${(bodyIndex % 12) + 1}`,
+  };
+};
 
 const LockerPage = ({ lockers, members }: LockerPageProps) => {
   const [slots, setSlots] = useState<LockerSlot[]>(lockers);
   const [activeLockerSection, setActiveLockerSection] =
     useState<LockerSection["key"]>("main");
   const [activeSlotNumber, setActiveSlotNumber] = useState<number | null>(null);
+  const [memberSearchKeyword, setMemberSearchKeyword] = useState("");
   const [memberKeyword, setMemberKeyword] = useState("");
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [isMemberListOpen, setIsMemberListOpen] = useState(false);
@@ -151,8 +208,28 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
     normalize(memberKeyword) !== "" &&
     Boolean(selectedMemberId) &&
     members.some(
-      (member) => member.id === selectedMemberId && normalize(member.name) === normalize(memberKeyword),
+      (member) =>
+        member.id === selectedMemberId &&
+        normalize(member.name) === normalize(memberKeyword),
     );
+
+  const matchedLockerNumbers = useMemo(() => {
+    const keyword = normalize(memberSearchKeyword);
+    if (!keyword) {
+      return new Set<number>();
+    }
+
+    return new Set(
+      slots
+        .filter((slot) => {
+          if (!slot.memberName) {
+            return false;
+          }
+          return normalize(slot.memberName).includes(keyword);
+        })
+        .map((slot) => slot.lockerNumber),
+    );
+  }, [memberSearchKeyword, slots]);
 
   const candidateMembers = useMemo(() => {
     const keyword = normalize(memberKeyword);
@@ -305,6 +382,26 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
       <div className="panel-header">
         <h2 className="section-title">보관함 관리</h2>
       </div>
+      <div className="locker-search-wrap">
+        <label htmlFor="locker-member-search" className="sr-only">
+          회원명 검색
+        </label>
+        <input
+          id="locker-member-search"
+          className="locker-member-input"
+          value={memberSearchKeyword}
+          onChange={(event) => setMemberSearchKeyword(event.target.value)}
+          placeholder="회원명으로 보관함 검색"
+          autoComplete="off"
+        />
+        {memberSearchKeyword ? (
+          <p className="detail-helper">
+            {matchedLockerNumbers.size > 0
+              ? `${matchedLockerNumbers.size}개의 보관함을 찾았습니다.`
+              : "검색 결과가 없습니다."}
+          </p>
+        ) : null}
+      </div>
       <div className="locker-tabs" role="tablist" aria-label="보관함 구획 선택">
         {lockerSections.map((section) => (
           <button
@@ -349,20 +446,24 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
                   {sectionSlots.map((slot) => {
                     const remainingDays = getRemainingDays(slot.expiresAt);
                     const slotLabel = getSlotLabel(slot, section);
+                    const isSearchMatched = matchedLockerNumbers.has(
+                      slot.lockerNumber,
+                    );
                     return (
-                        <button
-                          key={slot.lockerNumber}
-                          type="button"
-                          className={`locker-cell ${
-                            slot.memberId
-                              ? remainingDays !== null && remainingDays <= 0
-                                ? "is-occupied"
-                                : "is-occupied-green"
-                              : "is-empty"
-                          }`}
-                          onClick={() => openSlot(slot)}
-                          aria-label={`보관함 ${slotLabel} 클릭하여 연결`}
-                        >
+                    <button
+                      key={slot.lockerNumber}
+                      type="button"
+                      style={getLockerGridStyle(slot, section)}
+                      className={`locker-cell ${
+                        slot.memberId
+                          ? remainingDays !== null && remainingDays <= 0
+                            ? "is-occupied"
+                            : "is-occupied-green"
+                          : "is-empty"
+                      } ${isSearchMatched ? "is-search-match" : ""}`.trim()}
+                      onClick={() => openSlot(slot)}
+                      aria-label={`보관함 ${slotLabel} 클릭하여 연결`}
+                    >
                         {slot.memberName ? (
                           <>
                             <span className="locker-cell-member">{slot.memberName}</span>

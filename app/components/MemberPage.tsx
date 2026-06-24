@@ -369,6 +369,8 @@ const MemberPage = ({
   const [membershipDraftValue, setMembershipDraftValue] = useState("none");
   const [membershipStartDateDraft, setMembershipStartDateDraft] = useState("");
   const [expiryExtensionDate, setExpiryExtensionDate] = useState("");
+  const [attendanceExportFrom, setAttendanceExportFrom] = useState("");
+  const [attendanceExportTo, setAttendanceExportTo] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
   const [historyPage, setHistoryPage] = useState(1);
@@ -603,6 +605,31 @@ const MemberPage = ({
     const unique = new Set(selectedMember.activities.map((activity) => activity.type));
     return Array.from(unique).sort();
   }, [selectedMember]);
+  const attendanceExportRangeInvalid = useMemo(() => {
+    if (!attendanceExportFrom || !attendanceExportTo) {
+      return false;
+    }
+    const fromDate = new Date(attendanceExportFrom);
+    const toDate = new Date(attendanceExportTo);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return true;
+    }
+    return fromDate > toDate;
+  }, [attendanceExportFrom, attendanceExportTo]);
+  const attendanceExportHref = useMemo(() => {
+    if (!selectedMember) {
+      return "";
+    }
+    const params = new URLSearchParams();
+    if (attendanceExportFrom) {
+      params.set("start", attendanceExportFrom);
+    }
+    if (attendanceExportTo) {
+      params.set("end", attendanceExportTo);
+    }
+    const query = params.toString();
+    return `/api/members/${selectedMember.id}/attendance-export${query ? `?${query}` : ""}`;
+  }, [attendanceExportFrom, attendanceExportTo, selectedMember]);
   const filteredHistoryItems = useMemo(() => {
     if (!selectedMember) {
       return [];
@@ -781,6 +808,8 @@ const MemberPage = ({
     setHistoryTypeFilter("all");
     setHistoryPage(1);
     setPendingHistoryDeleteId(null);
+    setAttendanceExportFrom("");
+    setAttendanceExportTo("");
   }, [selectedMemberId]);
 
   useEffect(() => {
@@ -2173,6 +2202,49 @@ const MemberPage = ({
                   </button>
                 ))}
               </div>
+              {historyTypeFilter === "attendance_checked" && (
+                <div className="panel-actions-attendance-export">
+                  <label className="detail-label" htmlFor="attendanceExportFrom">
+                    시작일
+                  </label>
+                  <input
+                    id="attendanceExportFrom"
+                    type="date"
+                    value={attendanceExportFrom}
+                    onChange={(event) => {
+                      setAttendanceExportFrom(event.target.value);
+                    }}
+                    max={attendanceExportTo || undefined}
+                  />
+                  <label className="detail-label" htmlFor="attendanceExportTo">
+                    종료일
+                  </label>
+                  <input
+                    id="attendanceExportTo"
+                    type="date"
+                    value={attendanceExportTo}
+                    onChange={(event) => {
+                      setAttendanceExportTo(event.target.value);
+                    }}
+                    min={attendanceExportFrom || undefined}
+                  />
+                  <a
+                    className="button-secondary button-history"
+                    href={attendanceExportHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    onClick={(event) => {
+                      if (attendanceExportRangeInvalid) {
+                        event.preventDefault();
+                        alert("시작일은 종료일보다 늦을 수 없습니다.");
+                      }
+                    }}
+                  >
+                    출석내역 다운로드
+                  </a>
+                </div>
+              )}
             </div>
             {filteredHistoryItems.length > 0 ? (
               <>

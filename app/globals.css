@@ -1392,6 +1392,20 @@ button {
   cursor: pointer;
 }
 
+.button-primary,
+.button-secondary,
+.button-danger,
+.button-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .button-primary {
   background: #111827;
   color: #ffffff;
@@ -1411,6 +1425,13 @@ button {
 .button-danger {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.panel-actions-attendance-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .grid {

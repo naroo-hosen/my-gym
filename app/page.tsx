@@ -96,6 +96,17 @@ const resolveCurrentMembershipExpiry = (
   return adjustedExpiry;
 };
 
+const kstDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const getKstDateKey = (value: string | Date) =>
+  kstDateKeyFormatter.format(new Date(value));
+const getKstDateMidnightTime = (value: string | Date) =>
+  new Date(`${getKstDateKey(value)}T00:00:00+09:00`).getTime();
+
 const analyzeMarketingMember = (
   member: MarketingTargetMember,
   now: Date,
@@ -204,8 +215,10 @@ const analyzeMarketingMember = (
     lastKnownExpiry = currentExpiry;
   }
 
+  const nowKstMidnight = getKstDateMidnightTime(now);
   const isCurrentlyExpired =
-    !!lastKnownExpiry && lastKnownExpiry.getTime() < now.getTime();
+    lastKnownExpiry !== null &&
+    getKstDateMidnightTime(lastKnownExpiry) <= nowKstMidnight;
 
   if (isCurrentlyExpired) {
     expiredHistoryCount += 1;
@@ -653,24 +666,14 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       } =>
         member !== null,
     );
-  const getKstDateKey = (value: string | Date) =>
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Seoul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(value));
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const todayKst = getKstDateKey(new Date());
-  const todayKstMidnight = new Date(`${todayKst}T00:00:00+09:00`).getTime();
+  const todayKstMidnight = getKstDateMidnightTime(new Date());
   const getElapsedDaysByDate = (value: string) => {
-    const dateKst = getKstDateKey(value);
-    const dateKstMidnight = new Date(`${dateKst}T00:00:00+09:00`).getTime();
+    const dateKstMidnight = getKstDateMidnightTime(value);
     return Math.floor((todayKstMidnight - dateKstMidnight) / MS_PER_DAY);
   };
   const getRemainingDaysByDate = (value: string) => {
-    const dateKst = getKstDateKey(value);
-    const dateKstMidnight = new Date(`${dateKst}T00:00:00+09:00`).getTime();
+    const dateKstMidnight = getKstDateMidnightTime(value);
     return Math.floor((dateKstMidnight - todayKstMidnight) / MS_PER_DAY);
   };
   const expiringMarketingMembers = marketingTargets
@@ -696,10 +699,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         Number.isNaN(analysis.lastKnownExpiry.getTime()) ||
         !analysis.isCurrentlyExpired
       ) {
-        return null;
-      }
-
-      if (analysis.lastKnownExpiry.getTime() >= now.getTime()) {
         return null;
       }
 

@@ -29,20 +29,94 @@ const formatMembershipLabel = (membership: {
     membership.weeklyAttendance
   }회 · ${membership.price.toLocaleString("ko-KR")}원`;
 
+const TARGET_TIMEZONE = "Asia/Seoul";
+
+const getDatePartsInZone = (date: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+  };
+};
+
+const getTimeZoneOffsetMs = (date: Date, timeZone: string) => {
+  const parts = getDatePartsInZone(date, timeZone);
+  const asUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+
+  return asUtc - date.getTime();
+};
+
+const makeDateInTimeZone = (
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number,
+  timeZone: string,
+) => {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+  const offset = getTimeZoneOffsetMs(new Date(utcGuess), timeZone);
+
+  return new Date(utcGuess - offset);
+};
+
 const getMembershipExpiryDate = (
   assignedAt: Date,
   duration: number,
   durationUnit: MembershipDurationUnit,
 ) => {
-  const expiresAt = new Date(assignedAt);
+  const assignedAtParts = getDatePartsInZone(assignedAt, TARGET_TIMEZONE);
 
   if (durationUnit === "DAY") {
-    expiresAt.setDate(expiresAt.getDate() + Math.max(duration - 1, 0));
-    expiresAt.setHours(23, 59, 59, 999);
-    return expiresAt;
+    return makeDateInTimeZone(
+      assignedAtParts.year,
+      assignedAtParts.month,
+      assignedAtParts.day + Math.max(duration - 1, 0),
+      23,
+      59,
+      59,
+      999,
+      TARGET_TIMEZONE,
+    );
   }
 
-  expiresAt.setMonth(expiresAt.getMonth() + duration);
+  const expiresAt = makeDateInTimeZone(
+    assignedAtParts.year,
+    assignedAtParts.month,
+    assignedAtParts.day,
+    0,
+    0,
+    0,
+    0,
+    TARGET_TIMEZONE,
+  );
+  expiresAt.setUTCMonth(expiresAt.getUTCMonth() + duration);
   return expiresAt;
 };
 
@@ -195,8 +269,20 @@ export const updateMember = async (formData: FormData) => {
         const membershipStartDateValue =
           rawMembershipStartDate?.toString().trim() ?? "";
         const startDate = membershipStartDateValue
-          ? new Date(`${membershipStartDateValue}T00:00:00`)
-          : new Date();
+          ? new Date(`${membershipStartDateValue}T00:00:00+09:00`)
+          : (() => {
+              const nowParts = getDatePartsInZone(new Date(), TARGET_TIMEZONE);
+              return makeDateInTimeZone(
+                nowParts.year,
+                nowParts.month,
+                nowParts.day,
+                0,
+                0,
+                0,
+                0,
+                TARGET_TIMEZONE,
+              );
+            })();
         if (Number.isNaN(startDate.getTime())) {
           return;
         }
@@ -610,10 +696,46 @@ export const extendMemberMembership = async (formData: FormData) => {
         )
       : null);
 
+  const makeKstDateTime = (
+    datePart: string,
+    hour: number,
+    minute: number,
+    second: number,
+    millisecond: number,
+  ) => {
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (!year || !month || !day) {
+      return null;
+    }
+
+    return makeDateInTimeZone(
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      millisecond,
+      TARGET_TIMEZONE,
+    );
+  };
+
   const resolvedNextExpiry = targetDate
-    ? new Date(`${targetDate}T23:59:59`)
+    ? makeKstDateTime(targetDate, 23, 59, 59, 999)
     : baseExpiry
-      ? new Date(baseExpiry)
+      ? (() => {
+          const baseParts = getDatePartsInZone(baseExpiry, TARGET_TIMEZONE);
+          return makeDateInTimeZone(
+            baseParts.year,
+            baseParts.month,
+            baseParts.day,
+            baseParts.hour,
+            baseParts.minute,
+            baseParts.second,
+            0,
+            TARGET_TIMEZONE,
+          );
+        })()
       : null;
 
   if (!resolvedNextExpiry || Number.isNaN(resolvedNextExpiry.getTime())) {
@@ -625,11 +747,13 @@ export const extendMemberMembership = async (formData: FormData) => {
       return;
     }
     if (unit === "month") {
-      resolvedNextExpiry.setMonth(resolvedNextExpiry.getMonth() + amount);
+      resolvedNextExpiry.setUTCMonth(resolvedNextExpiry.getUTCMonth() + amount);
     } else if (unit === "week") {
-      resolvedNextExpiry.setDate(resolvedNextExpiry.getDate() + amount * 7);
+      resolvedNextExpiry.setUTCDate(
+        resolvedNextExpiry.getUTCDate() + amount * 7,
+      );
     } else {
-      resolvedNextExpiry.setDate(resolvedNextExpiry.getDate() + amount);
+      resolvedNextExpiry.setUTCDate(resolvedNextExpiry.getUTCDate() + amount);
     }
   }
 

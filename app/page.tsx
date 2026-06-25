@@ -653,6 +653,11 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       } =>
         member !== null,
     );
+  const getDateOnlyTime = (value: string) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  };
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -666,7 +671,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       return diffDays >= 0 && diffDays <= 7;
     })
     .sort(
-      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+      (a, b) => getDateOnlyTime(a.expiresAt) - getDateOnlyTime(b.expiresAt),
     );
   const expiredMarketingMembers = analyzedMarketingMembers
     .map(({ member, analysis }) => {
@@ -725,8 +730,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     )
     .sort(
       (a, b) => {
-        const diff =
-          new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime();
+        const diff = getDateOnlyTime(b.expiresAt) - getDateOnlyTime(a.expiresAt);
         if (diff !== 0) {
           return diff;
         }

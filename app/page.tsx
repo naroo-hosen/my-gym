@@ -660,6 +660,16 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const getElapsedDaysByDate = (value: string) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return Math.floor((today.getTime() - date.getTime()) / MS_PER_DAY);
+  };
+  const getRemainingDaysByDate = (value: string) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return Math.floor((date.getTime() - today.getTime()) / MS_PER_DAY);
+  };
   const expiringMarketingMembers = marketingTargets
     .filter((member) => {
       const expiresAt = new Date(member.expiresAt);
@@ -672,8 +682,8 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     .sort(
       (a, b) => {
         const dateCompare =
-          Number(getDateOnlyKey(a.expiresAt)) -
-          Number(getDateOnlyKey(b.expiresAt));
+          getRemainingDaysByDate(a.expiresAt) -
+          getRemainingDaysByDate(b.expiresAt);
         if (dateCompare !== 0) {
           return dateCompare;
         }
@@ -738,8 +748,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
     .sort(
       (a, b) => {
         const dateCompare =
-          Number(getDateOnlyKey(b.expiresAt)) -
-          Number(getDateOnlyKey(a.expiresAt));
+          getElapsedDaysByDate(a.expiresAt) - getElapsedDaysByDate(b.expiresAt);
         if (dateCompare !== 0) {
           return dateCompare;
         }

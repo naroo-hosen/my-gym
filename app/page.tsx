@@ -671,7 +671,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       return diffDays >= 0 && diffDays <= 7;
     })
     .sort(
-      (a, b) => getDateOnlyTime(a.expiresAt) - getDateOnlyTime(b.expiresAt),
+      (a, b) => getDateOnlyTime(b.expiresAt) - getDateOnlyTime(a.expiresAt),
     );
   const expiredMarketingMembers = analyzedMarketingMembers
     .map(({ member, analysis }) => {

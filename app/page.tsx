@@ -724,7 +724,14 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         member !== null,
     )
     .sort(
-      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+      (a, b) => {
+        const diff =
+          new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime();
+        if (diff !== 0) {
+          return diff;
+        }
+        return b.id - a.id;
+      },
     );
   const reRegistrationSummary = analyzedMarketingMembers.reduce(
     (summary, { analysis }) => {

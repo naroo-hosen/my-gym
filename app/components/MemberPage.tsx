@@ -199,6 +199,13 @@ const getInputDate = (date: Date) => {
 
 const formatDateInput = (value: string | Date | null) => {
   if (!value) return "";
+  if (typeof value === "string") {
+    const datePart = value.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      return datePart;
+    }
+  }
+
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return getInputDate(date);

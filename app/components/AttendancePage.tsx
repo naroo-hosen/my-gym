@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { playAttendanceSound } from "@/lib/attendanceSound";
 
 type AttendanceActivity = {
   createdAt: string;
@@ -335,6 +336,8 @@ const AttendancePage = ({ members }: AttendancePageProps) => {
         alert(payload?.message ?? "요청을 처리할 수 없습니다.");
         return;
       }
+
+      playAttendanceSound(hasAttendance ? "uncheck" : "check");
 
       router.refresh();
     } catch {

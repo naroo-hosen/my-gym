@@ -15,6 +15,7 @@ import {
   resumeMemberMembership,
   updateMember,
 } from "@/app/actions";
+import { playAttendanceSound } from "@/lib/attendanceSound";
 import PhoneInput from "@/app/components/PhoneInput";
 
 type Member = {
@@ -717,6 +718,7 @@ const MemberPage = ({
       }
       if (result?.status === "ok") {
         alert("출석체크가 완료되었습니다");
+        playAttendanceSound("check");
       }
       router.refresh();
     });

@@ -265,6 +265,38 @@
           ? window.location.origin
           : "http://54.180.69.226:3000";
 
+      const playAttendanceSound = () => {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+          return;
+        }
+
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "square";
+        gain.gain.value = 0.12;
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+
+        try {
+          if (context.state === "suspended") {
+            context.resume();
+          }
+          oscillator.frequency.value = 880;
+          gain.gain.setValueAtTime(0.12, context.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            context.currentTime + 0.12,
+          );
+          oscillator.start(context.currentTime);
+          oscillator.stop(context.currentTime + 0.12);
+        } catch {
+          // ignore audio errors
+        }
+      };
+
       const formatPhone = (value) => {
         const digits = value.replace(/\D/g, "").slice(0, 11);
         if (digits.length <= 3) return digits;
@@ -383,6 +415,7 @@
 
           switch (data.status) {
             case "ok":
+              playAttendanceSound();
               setStatus(
                 `${data.member?.name ?? "회원"}님 출석 완료!`,
                 "success",

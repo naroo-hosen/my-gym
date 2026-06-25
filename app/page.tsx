@@ -653,30 +653,29 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       } =>
         member !== null,
     );
-  const getDateOnlyKey = (value: string) => {
-    const datePart = value.slice(0, 10);
-    return datePart.replace(/-/g, "");
-  };
+  const getKstDateKey = (value: string | Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(value));
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayKst = getKstDateKey(new Date());
+  const todayKstMidnight = new Date(`${todayKst}T00:00:00+09:00`).getTime();
   const getElapsedDaysByDate = (value: string) => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return Math.floor((today.getTime() - date.getTime()) / MS_PER_DAY);
+    const dateKst = getKstDateKey(value);
+    const dateKstMidnight = new Date(`${dateKst}T00:00:00+09:00`).getTime();
+    return Math.floor((todayKstMidnight - dateKstMidnight) / MS_PER_DAY);
   };
   const getRemainingDaysByDate = (value: string) => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return Math.floor((date.getTime() - today.getTime()) / MS_PER_DAY);
+    const dateKst = getKstDateKey(value);
+    const dateKstMidnight = new Date(`${dateKst}T00:00:00+09:00`).getTime();
+    return Math.floor((dateKstMidnight - todayKstMidnight) / MS_PER_DAY);
   };
   const expiringMarketingMembers = marketingTargets
     .filter((member) => {
-      const expiresAt = new Date(member.expiresAt);
-      expiresAt.setHours(0, 0, 0, 0);
-      const diffDays = Math.round(
-        (expiresAt.getTime() - today.getTime()) / MS_PER_DAY,
-      );
+      const diffDays = getRemainingDaysByDate(member.expiresAt);
       return diffDays >= 0 && diffDays <= 7;
     })
     .sort(

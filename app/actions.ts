@@ -40,6 +40,7 @@ const getDatePartsInZone = (date: Date, timeZone: string) => {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    fractionalSecondDigits: 3,
     hour12: false,
   });
   const parts = Object.fromEntries(
@@ -53,6 +54,7 @@ const getDatePartsInZone = (date: Date, timeZone: string) => {
     hour: Number(parts.hour),
     minute: Number(parts.minute),
     second: Number(parts.second),
+    millisecond: Number(parts.fractionalSecond),
   };
 };
 
@@ -65,6 +67,7 @@ const getTimeZoneOffsetMs = (date: Date, timeZone: string) => {
     parts.hour,
     parts.minute,
     parts.second,
+    parts.millisecond,
   );
 
   return asUtc - date.getTime();

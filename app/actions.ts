@@ -109,18 +109,16 @@ const getMembershipExpiryDate = (
     );
   }
 
-  const expiresAt = makeDateInTimeZone(
+  return makeDateInTimeZone(
     assignedAtParts.year,
     assignedAtParts.month,
-    assignedAtParts.day,
-    0,
-    0,
-    0,
-    0,
+    assignedAtParts.day + Math.max(duration * 30 - 1, 0),
+    23,
+    59,
+    59,
+    999,
     TARGET_TIMEZONE,
   );
-  expiresAt.setUTCMonth(expiresAt.getUTCMonth() + duration);
-  return expiresAt;
 };
 
 const resolveMemberMembershipExpiryDate = (memberMembership: {

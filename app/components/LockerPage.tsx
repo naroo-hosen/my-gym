@@ -12,6 +12,7 @@ type LockerSlot = {
   lockerNumber: number;
   memberId: number | null;
   memberName: string | null;
+  memberBirthDate: string | null;
   assignedAt: string | null;
   expiresAt: string | null;
 };
@@ -120,6 +121,7 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
           lockerNumber: slot.lockerNumber,
           memberId: slot.memberId,
           memberName: slot.memberName,
+          memberBirthDate: slot.memberBirthDate,
           assignedAt: slot.assignedAt,
           expiresAt: slot.expiresAt,
         }));
@@ -242,6 +244,7 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
                 lockerNumber: saved.lockerNumber,
                 memberId: saved.memberId,
                 memberName: saved.memberName,
+                memberBirthDate: saved.memberBirthDate,
                 assignedAt: saved.assignedAt,
                 expiresAt: saved.expiresAt,
               }
@@ -282,6 +285,7 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
                 lockerNumber: cleared.lockerNumber,
                 memberId: cleared.memberId,
                 memberName: cleared.memberName,
+                memberBirthDate: cleared.memberBirthDate,
                 assignedAt: cleared.assignedAt,
                 expiresAt: cleared.expiresAt,
               }
@@ -366,6 +370,9 @@ const LockerPage = ({ lockers, members }: LockerPageProps) => {
                         {slot.memberName ? (
                           <>
                             <span className="locker-cell-member">{slot.memberName}</span>
+                            <span className="locker-cell-birth-date">
+                              {slot.memberBirthDate ?? "-"}
+                            </span>
                             <span className="locker-cell-remaining">
                               {remainingDays === null ? "-" : `${remainingDays}일 남음`}
                             </span>

@@ -7,6 +7,7 @@ type LockerSlotResponse = {
   section: string;
   memberId: number | null;
   memberName: string | null;
+  memberBirthDate: string | null;
   assignedAt: string | null;
   expiresAt: string | null;
 };
@@ -39,12 +40,13 @@ const toLockerSlotResponse = (locker: {
   memberId: number | null;
   assignedAt: Date | null;
   expiresAt: Date | null;
-  member: { id: number; name: string } | null;
+  member: { id: number; name: string; birthDate: Date | null } | null;
 }): LockerSlotResponse => ({
   lockerNumber: locker.lockerNumber,
   section: locker.section,
   memberId: locker.memberId,
   memberName: locker.member?.name ?? null,
+  memberBirthDate: toDateInputValue(locker.member?.birthDate ?? null),
   assignedAt: toDateInputValue(locker.assignedAt),
   expiresAt: toDateInputValue(locker.expiresAt),
 });
@@ -57,6 +59,7 @@ export const GET = async () => {
         select: {
           id: true,
           name: true,
+          birthDate: true,
         },
       },
     },
@@ -76,6 +79,7 @@ export const GET = async () => {
           section,
           memberId: null,
           memberName: null,
+          memberBirthDate: null,
           assignedAt: null,
           expiresAt: null,
         };
@@ -142,6 +146,7 @@ export const POST = async (request: Request) => {
     select: {
       id: true,
       name: true,
+      birthDate: true,
     },
   });
   if (!member) {
@@ -171,6 +176,7 @@ export const POST = async (request: Request) => {
           select: {
             id: true,
             name: true,
+            birthDate: true,
           },
         },
       },
@@ -209,6 +215,7 @@ export const DELETE = async (request: Request) => {
         select: {
           id: true,
           name: true,
+          birthDate: true,
         },
       },
     },

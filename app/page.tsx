@@ -465,6 +465,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
                 select: {
                   id: true,
                   name: true,
+                  birthDate: true,
                 },
               },
             },
@@ -595,6 +596,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         lockerNumber,
         memberId: null,
         memberName: null,
+        memberBirthDate: null,
         assignedAt: null,
         expiresAt: null,
       };
@@ -603,6 +605,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
       lockerNumber: lockerSlot.lockerNumber,
       memberId: lockerSlot.memberId,
       memberName: lockerSlot.member?.name ?? null,
+      memberBirthDate: toLockerDateString(lockerSlot.member?.birthDate ?? null),
       assignedAt: toLockerDateString(lockerSlot.assignedAt),
       expiresAt: toLockerDateString(lockerSlot.expiresAt),
     };

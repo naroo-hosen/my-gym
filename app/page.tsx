@@ -96,6 +96,17 @@ const resolveCurrentMembershipExpiry = (
   return adjustedExpiry;
 };
 
+const kstDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const getKstDateKey = (value: string | Date) =>
+  kstDateKeyFormatter.format(new Date(value));
+const getKstDateMidnightTime = (value: string | Date) =>
+  new Date(`${getKstDateKey(value)}T00:00:00+09:00`).getTime();
+
 const analyzeMarketingMember = (
   member: MarketingTargetMember,
   now: Date,
@@ -204,8 +215,10 @@ const analyzeMarketingMember = (
     lastKnownExpiry = currentExpiry;
   }
 
+  const nowKstMidnight = getKstDateMidnightTime(now);
   const isCurrentlyExpired =
-    !!lastKnownExpiry && lastKnownExpiry.getTime() < now.getTime();
+    lastKnownExpiry !== null &&
+    getKstDateMidnightTime(lastKnownExpiry) <= nowKstMidnight;
 
   if (isCurrentlyExpired) {
     expiredHistoryCount += 1;
@@ -588,7 +601,7 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
   const lockerSlotMap = new Map(
     lockerSlots.map((lockerSlot) => [lockerSlot.lockerNumber, lockerSlot]),
   );
-  const serializedLockerSlots = Array.from({ length: 66 }, (_, index) => {
+  const serializedLockerSlots = Array.from({ length: 106 }, (_, index) => {
     const lockerNumber = index + 1;
     const lockerSlot = lockerSlotMap.get(lockerNumber);
     if (!lockerSlot) {
@@ -657,19 +670,30 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         member !== null,
     );
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayKstMidnight = getKstDateMidnightTime(new Date());
+  const getElapsedDaysByDate = (value: string) => {
+    const dateKstMidnight = getKstDateMidnightTime(value);
+    return Math.floor((todayKstMidnight - dateKstMidnight) / MS_PER_DAY);
+  };
+  const getRemainingDaysByDate = (value: string) => {
+    const dateKstMidnight = getKstDateMidnightTime(value);
+    return Math.floor((dateKstMidnight - todayKstMidnight) / MS_PER_DAY);
+  };
   const expiringMarketingMembers = marketingTargets
     .filter((member) => {
-      const expiresAt = new Date(member.expiresAt);
-      expiresAt.setHours(0, 0, 0, 0);
-      const diffDays = Math.round(
-        (expiresAt.getTime() - today.getTime()) / MS_PER_DAY,
-      );
+      const diffDays = getRemainingDaysByDate(member.expiresAt);
       return diffDays >= 0 && diffDays <= 7;
     })
     .sort(
-      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+      (a, b) => {
+        const dateCompare =
+          getRemainingDaysByDate(a.expiresAt) -
+          getRemainingDaysByDate(b.expiresAt);
+        if (dateCompare !== 0) {
+          return dateCompare;
+        }
+        return b.id - a.id;
+      },
     );
   const expiredMarketingMembers = analyzedMarketingMembers
     .map(({ member, analysis }) => {
@@ -678,10 +702,6 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         Number.isNaN(analysis.lastKnownExpiry.getTime()) ||
         !analysis.isCurrentlyExpired
       ) {
-        return null;
-      }
-
-      if (analysis.lastKnownExpiry.getTime() >= now.getTime()) {
         return null;
       }
 
@@ -727,7 +747,14 @@ const HomePage = async ({ searchParams }: HomePageProps) => {
         member !== null,
     )
     .sort(
-      (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+      (a, b) => {
+        const dateCompare =
+          getElapsedDaysByDate(a.expiresAt) - getElapsedDaysByDate(b.expiresAt);
+        if (dateCompare !== 0) {
+          return dateCompare;
+        }
+        return b.id - a.id;
+      },
     );
   const reRegistrationSummary = analyzedMarketingMembers.reduce(
     (summary, { analysis }) => {

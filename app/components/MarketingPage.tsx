@@ -32,6 +32,7 @@ type SelectedMarketingMember = ExpiringMember & {
 };
 
 const EXPIRED_MEMBERS_PAGE_SIZE = 10;
+const EXPIRING_MEMBERS_PAGE_SIZE = 15;
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -83,20 +84,32 @@ const MarketingPage = ({
   todayNewMembers,
 }: MarketingPageProps) => {
   const [expiredPage, setExpiredPage] = useState(1);
+  const [expiringPage, setExpiringPage] = useState(1);
   const [selectedMember, setSelectedMember] =
     useState<SelectedMarketingMember | null>(null);
   const expiredTotalPages = Math.max(
     1,
     Math.ceil(expiredMembers.length / EXPIRED_MEMBERS_PAGE_SIZE),
   );
+  const expiringTotalPages = Math.max(
+    1,
+    Math.ceil(expiringMembers.length / EXPIRING_MEMBERS_PAGE_SIZE),
+  );
   const pagedExpiredMembers = expiredMembers.slice(
     (expiredPage - 1) * EXPIRED_MEMBERS_PAGE_SIZE,
     expiredPage * EXPIRED_MEMBERS_PAGE_SIZE,
+  );
+  const pagedExpiringMembers = expiringMembers.slice(
+    (expiringPage - 1) * EXPIRING_MEMBERS_PAGE_SIZE,
+    expiringPage * EXPIRING_MEMBERS_PAGE_SIZE,
   );
 
   useEffect(() => {
     setExpiredPage((current) => Math.min(current, expiredTotalPages));
   }, [expiredTotalPages]);
+  useEffect(() => {
+    setExpiringPage((current) => Math.min(current, expiringTotalPages));
+  }, [expiringTotalPages]);
 
   useEffect(() => {
     if (!selectedMember) {
@@ -126,7 +139,30 @@ const MarketingPage = ({
       <section className="panel marketing-panel">
         <div className="panel-header">
           <h3>만료 7일 이내 회원</h3>
-          <span className="count">{expiringMembers.length}명</span>
+          <div className="pagination">
+            <span className="count">{expiringMembers.length}명</span>
+            <button
+              className="button-ghost"
+              type="button"
+              onClick={() => setExpiringPage((page) => Math.max(1, page - 1))}
+              disabled={expiringPage === 1}
+            >
+              이전
+            </button>
+            <span className="pagination-status">
+              {expiringPage} / {expiringTotalPages}
+            </span>
+            <button
+              className="button-ghost"
+              type="button"
+              onClick={() =>
+                setExpiringPage((page) => Math.min(expiringTotalPages, page + 1))
+              }
+              disabled={expiringPage === expiringTotalPages}
+            >
+              다음
+            </button>
+          </div>
         </div>
         {expiringMembers.length ? (
           <div className="table-wrap">
@@ -140,7 +176,7 @@ const MarketingPage = ({
                 </tr>
               </thead>
               <tbody>
-                {expiringMembers.map((member) => (
+                {pagedExpiringMembers.map((member) => (
                   <tr
                     key={member.id}
                     className="row"

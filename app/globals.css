@@ -1392,6 +1392,20 @@ button {
   cursor: pointer;
 }
 
+.button-primary,
+.button-secondary,
+.button-danger,
+.button-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .button-primary {
   background: #111827;
   color: #ffffff;
@@ -1411,6 +1425,13 @@ button {
 .button-danger {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.panel-actions-attendance-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .grid {
@@ -1707,6 +1728,16 @@ button {
   width: min(320px, 100%);
 }
 
+.locker-grid-columns-21 {
+  grid-template-columns: repeat(21, minmax(28px, 1fr));
+  width: min(100%, fit-content(100%));
+}
+
+.locker-grid-columns-12 {
+  grid-template-columns: repeat(12, minmax(28px, 1fr));
+  width: min(100%, fit-content(100%));
+}
+
 .locker-sections {
   display: grid;
   gap: 24px;
@@ -1792,6 +1823,41 @@ button {
   background: #d1fae5;
 }
 
+.locker-cell.is-search-match {
+  border-color: #1d4ed8;
+  background: #dbeafe;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.42),
+    0 0 0 6px rgba(59, 130, 246, 0.22),
+    0 0 16px rgba(37, 99, 235, 0.45);
+  position: relative;
+  z-index: 1;
+}
+
+.locker-cell.is-search-match:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.locker-cell.is-search-match .locker-cell-member,
+.locker-cell.is-search-match .locker-cell-remaining,
+.locker-cell.is-search-match .locker-cell-label {
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+@keyframes locker-search-flash {
+  from {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 0 8px rgba(37, 99, 235, 0.25);
+  }
+  to {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.45), 0 0 14px rgba(37, 99, 235, 0.55);
+  }
+}
+
+.locker-cell.is-search-match {
+  animation: locker-search-flash 0.8s ease-in-out infinite alternate;
+}
+
 .locker-cell-member {
   font-size: 11px;
   line-height: 1.2;
@@ -1823,6 +1889,12 @@ button {
   color: #6b7280;
 }
 
+.locker-search-wrap {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 @media (max-width: 960px) {
   .locker-grid {
     gap: 8px;
@@ -1830,6 +1902,14 @@ button {
 
   .locker-grid-columns-16 {
     grid-template-columns: repeat(16, minmax(28px, 1fr));
+  }
+
+  .locker-grid-columns-21 {
+    grid-template-columns: repeat(21, minmax(22px, 1fr));
+  }
+
+  .locker-grid-columns-12 {
+    grid-template-columns: repeat(12, minmax(22px, 1fr));
   }
 }
 

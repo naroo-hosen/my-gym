@@ -265,6 +265,43 @@
           ? window.location.origin
           : "http://54.180.69.226:3000";
 
+      const speakKoreanGreeting = (memberName) => {
+        if (!("speechSynthesis" in window)) {
+          return;
+        }
+
+        const name =
+          typeof memberName === "string" && memberName.trim().length > 0
+            ? memberName.trim()
+            : "";
+        const utterance = new SpeechSynthesisUtterance(
+          `${name}님 안녕하세요`,
+        );
+        utterance.lang = "ko-KR";
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        const resolveKoreanVoice = () => {
+          const voices = window.speechSynthesis.getVoices();
+          const koreanVoice = voices.find(
+            (voice) => voice.lang.startsWith("ko"),
+          ) || voices.find((voice) => voice.name.includes("Korean"));
+          if (koreanVoice) {
+            utterance.voice = koreanVoice;
+          }
+        };
+
+        resolveKoreanVoice();
+        if (!utterance.voice && window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => {
+            resolveKoreanVoice();
+          };
+        }
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      };
+
       const formatPhone = (value) => {
         const digits = value.replace(/\D/g, "").slice(0, 11);
         if (digits.length <= 3) return digits;
@@ -358,18 +395,10 @@
             body: JSON.stringify({ phone }),
           });
           const data = await response.json();
+          const status = data?.status;
 
           if (data?.summary !== undefined) {
             setSummary(data.summary);
-          }
-
-          if (data?.message) {
-            setStatus(
-              data.message,
-              data.status === "ok" ? "success" : "error",
-              true,
-            );
-            return;
           }
 
           if (!response.ok) {
@@ -381,13 +410,10 @@
             return;
           }
 
-          switch (data.status) {
+          switch (status) {
             case "ok":
-              setStatus(
-                `${data.member?.name ?? "회원"}님 출석 완료!`,
-                "success",
-                true,
-              );
+              speakKoreanGreeting(data?.member?.name);
+              setStatus(`${data.member?.name ?? "회원"}님 출석 완료!`, "success", true);
               break;
             case "already_checked":
               setStatus("오늘은 이미 출석체크를 완료했습니다.", "error", true);
@@ -409,6 +435,18 @@
               break;
             default:
               setStatus("출석체크가 완료되지 않았습니다.", "error", true);
+          }
+
+          if (!data?.message) {
+            return;
+          }
+
+          if (status !== "ok") {
+            setStatus(
+              data.message,
+              "error",
+              true,
+            );
           }
         } catch (error) {
           setStatus("네트워크 오류가 발생했습니다.", "error", true);

@@ -308,6 +308,20 @@ const formatRemainingDaysLabel = (remainingDays: number | null) => {
   return `${remainingDays}일`;
 };
 
+const getPausedElapsedDays = (pausedAt: string | null) => {
+  if (!pausedAt) {
+    return null;
+  }
+
+  const start = new Date(pausedAt);
+  const now = new Date();
+  if (Number.isNaN(start.getTime()) || now < start) {
+    return null;
+  }
+
+  return Math.max(1, Math.ceil((now.getTime() - start.getTime()) / 86_400_000));
+};
+
 const hasMembershipStarted = (assignedAt: string | null) => {
   if (!assignedAt) {
     return false;
@@ -1322,6 +1336,12 @@ const MemberPage = ({
                         "ko-KR",
                       )
                     : "-";
+                  const pausedElapsedDays = getPausedElapsedDays(
+                    member.membershipPausedAt,
+                  );
+                  const pauseLabel = pausedElapsedDays
+                    ? `${pauseEndsAtLabel} (${pausedElapsedDays}일)`
+                    : pauseEndsAtLabel;
                   const remainingDays = getRemainingDays(
                     member.membershipExpiresAt,
                     member.membershipAssignedAt,
@@ -1382,7 +1402,7 @@ const MemberPage = ({
                           : "-"}
                       </td>
                       <td>{expiresAtLabel}</td>
-                      <td>{pauseEndsAtLabel}</td>
+                      <td>{pauseLabel}</td>
                       <td>{formatRemainingDaysLabel(remainingDays)}</td>
                     </tr>
                   );

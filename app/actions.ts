@@ -789,6 +789,77 @@ export const extendMemberMembership = async (formData: FormData) => {
   revalidatePath("/");
 };
 
+export const bulkExtendMemberMemberships = async (formData: FormData) => {
+  const days = Number(formData.get("days"));
+
+  if (!Number.isSafeInteger(days) || days <= 0 || days > 36_500) {
+    return { status: "invalid" as const, updatedCount: 0 };
+  }
+
+  const memberMemberships = await prisma.memberMembership.findMany({
+    where: {
+      pausedAt: null,
+    },
+    select: {
+      memberId: true,
+      expiresAt: true,
+      assignedAt: true,
+      membership: {
+        select: { duration: true, durationUnit: true },
+      },
+    },
+  });
+
+  if (memberMemberships.length === 0) {
+    return { status: "empty" as const, updatedCount: 0 };
+  }
+
+  const extensions = memberMemberships.flatMap((memberMembership) => {
+    const previousExpiry =
+      memberMembership.expiresAt ??
+      (memberMembership.membership?.duration
+        ? getMembershipExpiryDate(
+            memberMembership.assignedAt,
+            memberMembership.membership.duration,
+            memberMembership.membership.durationUnit === "DAY" ? "DAY" : "MONTH",
+          )
+        : null);
+
+    if (!previousExpiry) {
+      return [];
+    }
+
+    const nextExpiry = new Date(previousExpiry);
+    nextExpiry.setUTCDate(nextExpiry.getUTCDate() + days);
+
+    return [{ memberId: memberMembership.memberId, previousExpiry, nextExpiry }];
+  });
+
+  await prisma.$transaction(async (transaction) => {
+    for (const extension of extensions) {
+      await transaction.memberMembership.update({
+        where: { memberId: extension.memberId },
+        data: { expiresAt: extension.nextExpiry },
+      });
+      await createMemberActivity(transaction, {
+        memberId: extension.memberId,
+        type: "membership_extended",
+        description: `회원권 일괄 연장 (${days}일)`,
+        metadata: {
+          mode: "bulk",
+          unit: "day",
+          amount: days,
+          previousExpiry: extension.previousExpiry.toISOString(),
+          nextExpiry: extension.nextExpiry.toISOString(),
+        },
+      });
+    }
+  });
+
+  revalidatePath("/");
+  return { status: "ok" as const, updatedCount: extensions.length };
+};
+
 export const forceExpireMemberMembership = async (formData: FormData) => {
   const memberId = Number(formData.get("memberId"));
 

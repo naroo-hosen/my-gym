@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  bulkExtendMemberMemberships,
   checkInMember,
   createMember,
   deleteMemberActivity,
@@ -358,6 +359,9 @@ const MemberPage = ({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBulkExtendOpen, setIsBulkExtendOpen] = useState(false);
+  const [bulkExtensionDays, setBulkExtensionDays] = useState("1");
+  const [isBulkExtending, setIsBulkExtending] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(
     initialSelectedMemberId,
   );
@@ -1075,6 +1079,41 @@ const MemberPage = ({
     }
   };
 
+  const handleBulkExtend = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const days = Number(bulkExtensionDays);
+    if (!Number.isSafeInteger(days) || days <= 0 || days > 36_500) {
+      alert("연장 일수는 1일 이상 36,500일 이하의 정수로 입력해 주세요.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("days", String(days));
+    setIsBulkExtending(true);
+    void (async () => {
+      try {
+        const result = await bulkExtendMemberMemberships(formData);
+        if (result.status === "ok") {
+          alert(
+            `이용권 보유자 ${result.updatedCount}명의 만료일을 ${days}일 연장했습니다.`,
+          );
+          setIsBulkExtendOpen(false);
+          startTransition(() => router.refresh());
+          return;
+        }
+        if (result.status === "empty") {
+          alert("일시정지 중이 아닌 이용권 보유자가 없습니다.");
+          return;
+        }
+        alert("연장 일수를 확인해 주세요.");
+      } catch {
+        alert("일괄 연장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      } finally {
+        setIsBulkExtending(false);
+      }
+    })();
+  };
+
   return (
     <div className="content">
       <header className="page-header">
@@ -1084,6 +1123,13 @@ const MemberPage = ({
         <div className="header-actions">
           <span className="count">{countLabel}</span>
           <button
+            className="button-secondary"
+            type="button"
+            onClick={() => setIsBulkExtendOpen(true)}
+          >
+            이용권 일괄 연장
+          </button>
+          <button
             className="button-primary"
             type="button"
             onClick={() => setIsCreateOpen((prev) => !prev)}
@@ -1092,6 +1138,69 @@ const MemberPage = ({
           </button>
         </div>
       </header>
+
+      {isBulkExtendOpen && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className="modal confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-extend-title"
+          >
+            <div className="panel-header">
+              <h2 id="bulk-extend-title">이용권 일괄 연장</h2>
+              <button
+                className="button-ghost"
+                type="button"
+                onClick={() => setIsBulkExtendOpen(false)}
+                disabled={isBulkExtending}
+              >
+                닫기
+              </button>
+            </div>
+            <p className="confirm-message">
+              현재 이용권이 있는 회원 중 일시정지 회원을 제외하고 입력한 일수만큼
+              만료일이 연장됩니다.
+            </p>
+            <form onSubmit={handleBulkExtend}>
+              <label className="modal-field">
+                <span>연장 일수</span>
+                <div className="bulk-extension-input">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="36500"
+                    step="1"
+                    value={bulkExtensionDays}
+                    onChange={(event) => setBulkExtensionDays(event.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <span>일</span>
+                </div>
+              </label>
+              <div className="panel-actions center">
+                <button
+                  className="button-secondary"
+                  type="button"
+                  onClick={() => setIsBulkExtendOpen(false)}
+                  disabled={isBulkExtending}
+                >
+                  취소
+                </button>
+                <button
+                  className="button-primary"
+                  type="submit"
+                  disabled={isBulkExtending}
+                >
+                  {isBulkExtending ? "연장 중..." : "일괄 연장"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {isCreateOpen && (
         <div className="modal-overlay" role="presentation">

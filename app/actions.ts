@@ -792,7 +792,7 @@ export const extendMemberMembership = async (formData: FormData) => {
 export const bulkExtendMemberMemberships = async (formData: FormData) => {
   const days = Number(formData.get("days"));
 
-  if (!Number.isSafeInteger(days) || days <= 0 || days > 36_500) {
+  if (!Number.isSafeInteger(days) || days === 0 || Math.abs(days) > 36_500) {
     return { status: "invalid" as const, updatedCount: 0 };
   }
 
@@ -844,7 +844,7 @@ export const bulkExtendMemberMemberships = async (formData: FormData) => {
       await createMemberActivity(transaction, {
         memberId: extension.memberId,
         type: "membership_extended",
-        description: `회원권 일괄 연장 (${days}일)`,
+        description: `회원권 일괄 ${days < 0 ? "단축" : "연장"} (${Math.abs(days)}일)`,
         metadata: {
           mode: "bulk",
           unit: "day",

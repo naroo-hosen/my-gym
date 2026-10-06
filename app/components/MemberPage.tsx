@@ -1082,8 +1082,8 @@ const MemberPage = ({
   const handleBulkExtend = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const days = Number(bulkExtensionDays);
-    if (!Number.isSafeInteger(days) || days <= 0 || days > 36_500) {
-      alert("연장 일수는 1일 이상 36,500일 이하의 정수로 입력해 주세요.");
+    if (!Number.isSafeInteger(days) || days === 0 || Math.abs(days) > 36_500) {
+      alert("연장 일수는 -36,500일 이상 36,500일 이하의 0이 아닌 정수로 입력해 주세요.");
       return;
     }
 
@@ -1095,7 +1095,7 @@ const MemberPage = ({
         const result = await bulkExtendMemberMemberships(formData);
         if (result.status === "ok") {
           alert(
-            `이용권 보유자 ${result.updatedCount}명의 만료일을 ${days}일 연장했습니다.`,
+            `이용권 보유자 ${result.updatedCount}명의 만료일을 ${Math.abs(days)}일 ${days < 0 ? "앞당겼습니다" : "연장했습니다"}.`,
           );
           setIsBulkExtendOpen(false);
           startTransition(() => router.refresh());
@@ -1160,7 +1160,7 @@ const MemberPage = ({
             </div>
             <p className="confirm-message">
               현재 이용권이 있는 회원 중 일시정지 회원을 제외하고 입력한 일수만큼
-              만료일이 연장됩니다.
+              만료일이 연장됩니다. 음수를 입력하면 만료일이 앞당겨집니다.
             </p>
             <form onSubmit={handleBulkExtend}>
               <label className="modal-field">
@@ -1169,7 +1169,7 @@ const MemberPage = ({
                   <input
                     type="number"
                     inputMode="numeric"
-                    min="1"
+                    min="-36500"
                     max="36500"
                     step="1"
                     value={bulkExtensionDays}
